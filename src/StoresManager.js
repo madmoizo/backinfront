@@ -1,4 +1,4 @@
-import { openDB, deleteDB } from 'https://unpkg.com/idb@6.0.0/build/esm/index.js'
+import { openDB, deleteDB } from 'idb'
 
 import QueryLanguage from './QueryLanguage.js'
 import Store from './Store.js'
