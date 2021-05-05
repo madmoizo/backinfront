@@ -2,7 +2,7 @@ import isObject from './utils/isObject.js'
 import normalizeForSearch from './utils/normalizeForSearch.js'
 
 
-export class QueryLanguage {
+export default class QueryLanguage {
   static #OPERATORS = {
     $function: (storeValue, value) => value(storeValue),
     $equal: (storeValue, value) => storeValue === value,
