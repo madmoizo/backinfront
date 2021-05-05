@@ -1,4 +1,4 @@
-import getUrlPath from './utils/getUrlPath.js'
+import getUrlPath from './getUrlPath.js'
 
 
 /**
