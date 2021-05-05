@@ -371,6 +371,8 @@ export default class StoresManager {
       if (ctx.transaction && 'commit' in ctx.transaction) {
         ctx.transaction.commit()
       }
+
+      this.onRouteActionSuccess({ route, result })
     } catch (error) {
       errorCode = 'ACTION_ERROR'
 
@@ -380,8 +382,6 @@ export default class StoresManager {
         ctx.transaction.abort()
       }
     }
-
-    this.onRouteActionSuccess({ route, result })
 
     // Response
     if (result instanceof Response) {
