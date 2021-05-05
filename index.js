@@ -1,4 +1,4 @@
-import StoresManager from './StoresManager.js'
+import StoresManager from './src/StoresManager.js'
 
 
 export const Backinfront = StoresManager
