@@ -5,7 +5,7 @@ import isArray from './utils/isArray.js'
 import arrayToObject from './utils/arrayToObject.js'
 
 
-class Store {
+export default class Store {
   #storize
 
   /*****************************************************************
@@ -355,6 +355,3 @@ class Store {
     return store.get(savedPrimaryKey)
   }
 }
-
-
-export default Store
