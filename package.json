@@ -1,0 +1,14 @@
+{
+  "name": "backinfront",
+  "version": "0.0.1",
+  "description": "Use the frontend as a backend",
+  "main": "index.js",
+  "module": "index.js",
+  "scripts": {},
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/frlinw/backinfront.git"
+  },
+  "author": "Matthieu Dambrune",
+  "license": "ISC"
+}
