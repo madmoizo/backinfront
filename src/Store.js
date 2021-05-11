@@ -217,9 +217,9 @@ export default class Store {
         count += 1
 
         // Offset
-        if (count > offset) {
+        if (offset === null || count > offset) {
           // Limit
-          if (rows.length < limit) {
+          if (limit === null || rows.length < limit) {
             rows.push(cursor.value)
           }
         }
