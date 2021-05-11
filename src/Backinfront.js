@@ -11,9 +11,10 @@ import getUrlPath from './utils/getUrlPath.js'
 import joinPaths from './utils/joinPaths.js'
 import generateUUID from './utils/generateUUID.js'
 import urlToRegexp from './utils/urlToRegexp.js'
+import objectToJson from './utils/objectToJson.js'
 
 
-export default class StoresManager {
+export default class Backinfront {
   #LOCAL_FETCH_ERRORS = {
     'NOT_FOUND': {
       status: 404,
@@ -45,31 +46,107 @@ export default class StoresManager {
   }
 
   #syncInProgress = false
-
-
-  /*****************************************************************
-  * Helpers
-  *****************************************************************/
+  routes = []
+  stores = {}
+  syncMetaStoreName = '__Meta'
+  syncQueueStoreName = '__SyncQueue'
+  databaseVersion = null
+  databaseMigrations = []
+  databaseSchemaSpec = {
+    [this.syncMetaStoreName]: null,
+    [this.syncQueueStoreName]: {
+      keyPath: 'id',
+      indexes: {
+        'createdAt': 'createdAt'
+      }
+    }
+  }
+  authToken = () => null
+  routeState = () => null
+  formatRouteSearchParam = (value) => value
+  formatRoutePathParam = (value) => value
+  onRouteActionError = () => null
+  onRouteActionSuccess = () => null
+  onPopulateSuccess = () => null
+  onPopulateError = () => null
+  onSyncSuccess = () => null
+  onSyncError = () => null
+  formatDataBeforeSave = (data) => objectToJson(data)
 
   /**
-  * Filter a list of models
-  * @param {object} option - include/exclude some models
+  * Configuration
+  * @param {object} options
   */
-  #globalFilter (options = {}) {
-    const include = options.include || []
-    const exclude = options.exclude || []
+  constructor (options = {}) {
+    if (options.databaseName) {
+      this.databaseName = options.databaseName
+    } else {
+      throw new Error('[BackInFront] `databaseName` is required')
+    }
+    if (options.baseUrl) {
+      this.baseUrl = options.baseUrl
+    } else {
+      throw new Error('[BackInFront] `baseUrl` is required')
+    }
+    if (options.syncEndpoint) {
+      this.syncEndpoint = options.syncEndpoint
+    } else {
+      throw new Error('[BackInFront] `syncEndpoint` is required')
+    }
+    if (options.populateEndpoint) {
+      this.populateEndpoint = options.populateEndpoint
+    } else {
+      throw new Error('[BackInFront] `populateEndpoint` is required')
+    }
+    if (options.formatBeforeSave) {
+      this.formatBeforeSave = options.formatBeforeSave
+    }
+    if (options.authToken) {
+      this.authToken = options.authToken
+    }
+    if (options.routeState) {
+      this.routeState = options.routeState
+    }
+    if (options.formatRouteSearchParam) {
+      this.formatRouteSearchParam = options.formatRouteSearchParam
+    }
+    if (options.formatRoutePathParam) {
+      this.formatRoutePathParam = options.formatRoutePathParam
+    }
+    if (options.onRouteActionError) {
+      this.onRouteActionError = options.onRouteActionError
+    }
+    if (options.onRouteActionSuccess) {
+      this.onRouteActionSuccess = options.onRouteActionSuccess
+    }
+    if (options.onPopulateSuccess) {
+      this.onPopulateSuccess = options.onPopulateSuccess
+    }
+    if (options.onSyncSuccess) {
+      this.onSyncSuccess = options.onSyncSuccess
+    }
+    if (options.onSyncError) {
+      this.onSyncError = options.onSyncError
+    }
 
-    return Object.entries(this.stores)
-      // Filter models
-      .filter(([storeName, store]) => {
-        if (exclude.includes(storeName)) {
-          return false
-        }
-        if (include.length === 0) {
-          return true
-        }
-        return include.includes(storeName)
-      })
+    // Stores processing
+    if (options.stores) {
+      this.addStores(options.stores)
+    }
+
+    // Handle routes
+    self.addEventListener('fetch', (event) => {
+      const request = event.request
+      const route = this.#findRouteFromRequest(request)
+
+      if (route) {
+        // event.respondWith MUST be called synchronously with async processing inside
+        // to prevent others handlers to trigger
+        event.respondWith(
+          this.#getRouteResponse(route, request)
+        )
+      }
+    })
   }
 
   /*****************************************************************
@@ -77,21 +154,96 @@ export default class StoresManager {
   *****************************************************************/
 
   /**
-  * Connect to the indexeddb database and
+  * Open the indexeddb database and
   * proceed to pending migration
   */
-  async #connectDatabase () {
-    const db = await openDB(this.databaseName, this.databaseMigrations.length, {
-      upgrade: (db, oldVersion, newVersion, transaction) => {
-        for (const [idx, migration] of this.databaseMigrations.entries()) {
-          const version = idx + 1
+  async #openDatabase () {
+    if (this.databaseVersion === null) {
+      const tmpdb = await openDB(this.databaseName)
+      const transaction = tmpdb.transaction(db.objectStoreNames, 'readonly')
+      tmpdb.close()
 
-          if (oldVersion < version) {
-            for (const operation of migration) {
-              const operationType = operation[0]
-              const operationOptions = operation[1]
-              this.#DB_OPERATIONS[operationType](transaction, operationOptions)
+      // Remove old stuff
+      for (const storeName of db.objectStoreNames) {
+        // Delete or update indexes
+        if (storeName in this.databaseSchemaSpec) {
+          const storeSpec = this.databaseSchemaSpec[storeName]
+          const store = transaction.objectStore(storeName)
+
+          // Update or delete indexes
+          for (const indexName of store.indexNames) {
+            // Update index
+            if (indexName in storeSpec.indexes) {
+              const indexKeyPath = storeSpec.indexes[indexName]
+              if (indexKeyPath !== store.index(indexName).keyPath) {
+                this.databaseMigrations.push(['deleteIndex', {
+                  indexName
+                }])
+                this.databaseMigrations.push(['createIndex', {
+                  storeName,
+                  indexName,
+                  indexKeyPath
+                }])
+              }
+            // Delete index
+            } else {
+              this.databaseMigrations.push(['deleteIndex', {
+                indexName
+              }])
             }
+          }
+
+          // Create indexes
+          for (const indexName in storeSpec.indexes) {
+            if (!store.indexNames.includes(indexName)) {
+              const indexKeyPath = storeSpec.indexes[indexName]
+              this.databaseMigrations.push(['createIndex', {
+                storeName,
+                indexName,
+                indexKeyPath
+              }])
+            }
+          }
+        // Delete store (and indexes implicitly)
+        } else {
+          this.databaseMigrations.push(['deleteStore', {
+            storeName
+          }])
+        }
+      }
+
+      // Create stores
+      for (const storeName in this.databaseSchemaSpec) {
+        if (!db.objectStoreNames.includes(storeName)) {
+          const storeSpec = this.databaseSchemaSpec[storeName]
+          this.databaseMigrations.push(['createStore', {
+            storeName,
+            keyPath: storeSpec.keyPath
+          }])
+
+          for (const indexName in storeSpec.indexes) {
+            const indexKeyPath = storeSpec.indexes[indexName]
+            this.databaseMigrations.push(['createIndex', {
+              storeName,
+              indexName,
+              indexKeyPath
+            }])
+          }
+        }
+      }
+
+      this.databaseVersion = this.databaseMigrations.length
+        ? tmpdb.version + 1
+        : tmpdb.version
+    }
+
+    const db = await openDB(this.databaseName, this.databaseVersion, {
+      upgrade: (db, oldVersion, newVersion, transaction) => {
+        if (oldVersion < newVersion) {
+          for (const migration of this.databaseMigrations) {
+            const migrationType = migration[0]
+            const migrationOptions = migration[1]
+            this.#DB_OPERATIONS[migrationType](transaction, migrationOptions)
           }
         }
       }
@@ -100,10 +252,18 @@ export default class StoresManager {
   }
 
   /**
+  * Delete the database
+  * Can be useful to clean a user profile on logout for example
+  */
+  async deleteDatabase () {
+    await deleteDB(this.databaseName)
+  }
+
+  /**
   * Get a transaction
   */
   async getTransaction (mode, storeNames = null) {
-    const db = await this.#connectDatabase()
+    const db = await this.#openDatabase()
     const transaction = db.transaction(storeNames || db.objectStoreNames, mode)
     // The connection is not actually closed until all transactions
     // created using this connection are complete
@@ -121,84 +281,39 @@ export default class StoresManager {
     return store
   }
 
-
-  /**
-  * Use a cursor to iterate on a store or index
-  * @param {array} order - [index name, direction]
-  * @param {function} filter - filter the cursor value
-  */
-  async iterate (store, order, filter) {
-    const rows = []
-
-    // Initialize cursor params
-    let index = store
-    let direction = 'next'
-
-    if (order) {
-      index = store.index(order[0])
-
-      if (order[1] === 'DESC') {
-        direction = 'prev'
-      }
-    }
-
-    if (!filter) {
-      filter = () => true
-    }
-
-    // Cursor iteration
-    let cursor = await index.openCursor(null, direction)
-
-    while (cursor) {
-      if (filter(cursor.value)) {
-        rows.push(cursor.value)
-      }
-
-      cursor = await cursor.continue()
-    }
-
-    return rows
-  }
-
-  /**
-  * Add a custom where operator
-  * @param {string} operatorName - where clause
-  * @param {function} operatorAction - item to compare the condition with
-  * @return {void}
-  */
-  addQueryOperator (operatorName, operatorAction) {
-    QueryLanguage.addOperator(operatorName, operatorAction)
-  }
-
   /*****************************************************************
   * Sync management
   *****************************************************************/
 
   async #getMeta (key) {
-    const transaction = await this.getTransaction('readonly', this.syncMetaStoreName)
-    const value = await transaction.objectStore(this.syncMetaStoreName).get(key)
+    const store = await this.openStore(this.syncMetaStoreName, 'readonly')
+    const value = await store.get(key)
     return value
   }
 
   async #setMeta (key, value) {
-    const transaction = await this.getTransaction('readwrite', this.syncMetaStoreName)
-    await transaction.objectStore(this.syncMetaStoreName).put(value, key)
+    const store = await this.openStore(this.syncMetaStoreName, 'readwrite')
+    await store.put(value, key)
   }
 
   async #getFromSyncQueue () {
-    const transaction = await this.getTransaction('readwrite', this.syncQueueStoreName)
-    const store = transaction.objectStore(this.syncQueueStoreName)
-    const syncQueueItems = await this.iterate(store, ['createdAt', 'ASC'])
-    return syncQueueItems
+    const rows = []
+    const store = await this.openStore(this.syncQueueStoreName, 'readonly')
+    let cursor = await store.index('createdAt').openCursor(null, 'prev')
+    while (cursor) {
+      rows.push(cursor.value)
+      cursor = await cursor.continue()
+    }
+    return rows
   }
 
   async #clearSyncQueue () {
-    const transaction = await this.getTransaction('readwrite', this.syncQueueStoreName)
-    await transaction.objectStore(this.syncQueueStoreName).clear()
+    const store = await this.openStore(this.syncQueueStoreName, 'readwrite')
+    await store.clear()
   }
 
   async addToSyncQueue (storeName, primaryKey, transaction) {
-    const store = transaction.objectStore(this.syncQueueStoreName)
+    const store = await this.openStore(this.syncQueueStoreName, transaction)
     await store.add({
       id: generateUUID(),
       createdAt: (new Date()).toJSON(),
@@ -304,15 +419,13 @@ export default class StoresManager {
   * @param {object} request
   */
   #findRouteFromRequest (request) {
-    const requestUrl = new URL(request.url)
-
-    if (requestUrl.origin !== this.baseUrl) {
+    if (!request.url.startsWith(this.baseUrl)) {
       return undefined
     }
 
     return this.routes
       .filter(route => request.method === route.method)
-      .find(route => route.regexp.test(getUrlPath(requestUrl)))
+      .find(route => route.regexp.test(getUrlPath(new URL(request.url))))
   }
 
   /**
@@ -393,110 +506,6 @@ export default class StoresManager {
     return new Response(undefined, this.#LOCAL_FETCH_ERRORS[errorCode || 'NOT_FOUND'])
   }
 
-  /*****************************************************************
-  * Instance methods
-  *****************************************************************/
-
-  /**
-  * Configuration
-  * @param {object} options
-  */
-  constructor (options = {}) {
-    if (!options.databaseName) {
-      throw new Error('[BackInFront] `databaseName` is required')
-    }
-    if (!options.databaseMigrations || !isArray(options.databaseMigrations)) {
-      throw new Error('[BackInFront] `databaseMigrations` is required and must be an array')
-    }
-    if (!options.baseUrl) {
-      throw new Error('[BackInFront] `baseUrl` is required')
-    }
-    if (!options.syncEndpoint) {
-      throw new Error('[BackInFront] `syncEndpoint` is required')
-    }
-    if (!options.populateEndpoint) {
-      throw new Error('[BackInFront] `populateEndpoint` is required')
-    }
-
-    // Handle routes
-    self.addEventListener('fetch', (event) => {
-      const request = event.request
-      const route = this.#findRouteFromRequest(request)
-
-      if (route) {
-        // event.respondWith MUST be called synchronously with async processing inside
-        // to prevent others handlers to trigger
-        event.respondWith(
-          this.#getRouteResponse(route, request)
-        )
-      }
-    })
-
-    // Global config
-    this.routes = []
-    this.stores = {}
-    this.syncMetaStoreName = '_SyncMeta'
-    this.syncQueueStoreName = '_SyncQueue'
-    this.databaseMigrations = [
-      [
-        ['addStore', {
-          storeName: this.syncMetaStoreName
-        }],
-        ['addStore', {
-          storeName: this.syncQueueStoreName,
-          primaryKey: 'id'
-        }],
-        ['addIndex', {
-          storeName: this.syncQueueStoreName,
-          indexName: 'createdAt',
-          indexKey: 'createdAt'
-        }]
-      ]
-    ]
-
-    // User config
-    this.databaseName = options.databaseName
-    this.databaseMigrations = this.databaseMigrations.concat(options.databaseMigrations)
-    this.baseUrl = options.baseUrl
-    this.syncEndpoint = options.syncEndpoint
-    this.populateEndpoint = options.populateEndpoint
-    this.authToken = options.authToken
-      ? options.authToken
-      : () => null
-    this.routeState = options.routeState
-      ? options.routeState
-      : () => null
-    this.formatRouteSearchParam = options.formatRouteSearchParam
-      ? options.formatRouteSearchParam
-      : (value) => value
-    this.formatRoutePathParam = options.formatRoutePathParam
-      ? options.formatRoutePathParam
-      : (value) => value
-    this.onRouteActionError = options.onRouteActionError
-      ? options.onRouteActionError
-      : () => null
-    this.onRouteActionSuccess = options.onRouteActionSuccess
-      ? options.onRouteActionSuccess
-      : () => null
-    this.onPopulateSuccess = options.onPopulateSuccess
-      ? options.onPopulateSuccess
-      : () => null
-    this.onPopulateError = options.onPopulateError
-      ? options.onPopulateError
-      : () => null
-    this.onSyncSuccess = options.onSyncSuccess
-      ? options.onSyncSuccess
-      : () => null
-    this.onSyncError = options.onSyncError
-      ? options.onSyncError
-      : () => null
-
-    // Stores processing
-    if (options.stores) {
-      this.addStores(options.stores)
-    }
-  }
-
   /**
   * Add multiple store interfaces in a single call
   * @param {object} storeParams
@@ -517,6 +526,10 @@ export default class StoresManager {
   addStore (storeParams) {
     const store = new Store(this, storeParams)
     this.stores[store.storeName] = store
+    this.databaseSchemaSpec[store.storeName] = {
+      keyPath: store.primaryKey,
+      indexes: store.indexes
+    }
 
     // Routes
     for (const route of store.routes) {
@@ -536,30 +549,47 @@ export default class StoresManager {
     return store
   }
 
+  /**
+  * Add a custom where operator
+  * @param {string} operatorName - where clause
+  * @param {function} operatorAction - item to compare the condition with
+  * @return {void}
+  */
+  addQueryOperator (operatorName, operatorAction) {
+    QueryLanguage.addOperator(operatorName, operatorAction)
+  }
+
 
   /*****************************************************************
   * Sync management
   *****************************************************************/
 
   /**
-  * Delete the database
-  * Can be useful to clean a user profile on logout for example
-  */
-  async deleteDatabase () {
-    await deleteDB(this.databaseName)
-  }
-
-  /**
   * Fill the database with initial data
   * @param {object} filterOptions
   */
   async populate (filterOptions) {
+    // Process filter options
+    const storesToInclude = options.include || []
+    const storesToExclude = options.exclude || []
+    const storeNames = Object.entries(filterOptions)
+      .filter(([storeName, value]) => {
+        if (storesToExclude.includes(storeName)) {
+          return false
+        }
+        if (storesToInclude.length === 0) {
+          return true
+        }
+        return storesToInclude.includes(storeName)
+      })
+      .map(([storeName, store]) => storeName)
+
     try {
       const serverDataToSync = await this.#fetch({
         method: 'GET',
         pathname: this.populateEndpoint,
         searchParams: {
-          modelNames: this.#globalFilter(filterOptions).map(([storeName, store]) => storeName)
+          modelNames: storeNames
         }
       })
 
@@ -568,9 +598,9 @@ export default class StoresManager {
       await Promise.all(
         Object
           .keys(serverDataToSync)
-          .map(async (modelName) => {
-            const store = await this.openStore(modelName, 'readwrite', transaction)
-            const rows = serverDataToSync[modelName]
+          .map(async (storeName) => {
+            const store = await this.openStore(storeName, 'readwrite', transaction)
+            const rows = serverDataToSync[storeName]
 
             return Promise.all(
               rows.map(item => store.put(item))
@@ -598,34 +628,25 @@ export default class StoresManager {
       const syncQueueItems = await this.#getFromSyncQueue()
 
       // Deduplicates result
-      const syncQueueItemsDeduplicated = []
-      for (const { createdAt, modelName, primaryKey } of syncQueueItems) {
-        if (!syncQueueItemsDeduplicated.some(item => item.primaryKey === primaryKey && item.modelName === modelName)) {
-          syncQueueItemsDeduplicated.push({
-            modelName,
-            primaryKey,
-            toData: async () => ({
-              createdAt,
-              modelName,
-              primaryKey,
-              data: await this.stores[modelName].findOne(primaryKey)
-            })
-          })
-        }
-      }
+      const syncQueueItemsDeduplicated = syncQueueItems.filter((value, index, array) => index === array.findIndex(item => (item.place === value.place && item.name === value.name)))
 
-      // Proceed to parallel db request
+      // Retrieve data to sync
       const clientDataToSync = await Promise.all(
-        syncQueueItemsDeduplicated.map(item => item.toData())
+        syncQueueItemsDeduplicated.map(async ({ createdAt, modelName, primaryKey }) => ({
+          createdAt,
+          modelName,
+          primaryKey,
+          data: await this.stores[modelName].findOne(primaryKey)
+        }))
       )
 
       // Init lastChangeAt
-      let lastChangeAt = await this.#getMeta('lastChangeAt')
-      let lastChangeAtToSave = null
+      let currentLastChangeAt = await this.#getMeta('lastChangeAt')
+      let nextLastChangeAt = null
 
-      if (!lastChangeAt) {
-        lastChangeAt = new Date()
-        lastChangeAtToSave = lastChangeAt
+      if (!currentLastChangeAt) {
+        currentLastChangeAt = new Date()
+        nextLastChangeAt = currentLastChangeAt
       }
 
       // Send data to sync
@@ -633,7 +654,7 @@ export default class StoresManager {
         method: 'POST',
         pathname: this.syncEndpoint,
         searchParams: {
-          lastChangeAt: lastChangeAt
+          lastChangeAt: currentLastChangeAt
         },
         data: clientDataToSync
       })
@@ -645,14 +666,14 @@ export default class StoresManager {
         const store = await this.openStore(modelName, 'readwrite', transaction)
         await store.put(data)
 
-        if (!lastChangeAtToSave || isAfterDate(parseDate(createdAt), lastChangeAtToSave)) {
-          lastChangeAtToSave = parseDate(createdAt)
+        if (!nextLastChangeAt || isAfterDate(parseDate(createdAt), nextLastChangeAt)) {
+          nextLastChangeAt = parseDate(createdAt)
         }
       }
 
       // Save the last sync date
-      if (lastChangeAtToSave) {
-        await this.#setMeta('lastChangeAt', lastChangeAtToSave.toJSON())
+      if (nextLastChangeAt) {
+        await this.#setMeta('lastChangeAt', nextLastChangeAt.toJSON())
       }
 
       // Clear the queue if not empty

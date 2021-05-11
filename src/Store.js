@@ -6,49 +6,117 @@ import arrayToObject from './utils/arrayToObject.js'
 
 
 export default class Store {
-  #storize
+  #backinfront
+  endpoint
+  routes = []
+  indexes = {}
+  beforeCreate = (data) => null
+
+  constructor (backinfront, options = {}) {
+    this.#backinfront = backinfront
+
+    if (options.storeName) {
+      this.storeName = options.storeName
+    } else {
+      throw new Error('[BackInFront] `storeName` is required')
+    }
+    if (options.primaryKey) {
+      this.primaryKey = options.primaryKey
+    } else {
+      throw new Error(`[BackInFront] \`primaryKey\` is required on store ${options.storeName}`)
+    }
+    if (options.indexes) {
+      this.indexes = options.indexes
+    }
+    if (options.beforeCreate) {
+      this.beforeCreate = options.beforeCreate
+    }
+
+    if (options.endpoint) {
+      this.endpoint = options.endpoint
+    } else {
+      throw new Error(`[BackInFront][router] \`endpoint\` is required`)
+    }
+
+    // Register manual routes
+    if (options.routes) {
+      for (const route of options.routes) {
+        this.addRoute(route)
+      }
+    }
+
+    // Register predefined routes
+    if (options.autoroutes) {
+      const predefinedRoutes = {
+        'create': {
+          method: 'POST',
+          pathname: '/',
+          action: async ({ body, transaction }, stores) => {
+            return stores[this.storeName].create(body, transaction)
+          }
+        },
+        'list': {
+          method: 'GET',
+          pathname: '/',
+          action: async (ctx, stores) => {
+            return stores[this.storeName].findAndCountAll()
+          }
+        },
+        'retrieve': {
+          method: 'GET',
+          pathname: '/:primaryKey',
+          action: async ({ pathParams }, stores) => {
+            return stores[this.storeName].findOne(pathParams.primaryKey)
+          }
+        },
+        'update': {
+          method: 'PUT',
+          pathname: '/:primaryKey',
+          action: async ({ pathParams, body, transaction }, stores) => {
+            return stores[this.storeName].update(pathParams.primaryKey, body, transaction)
+          }
+        }
+      }
+
+      for (const autoroute of options.autoroutes) {
+        this.addRoute(predefinedRoutes[autoroute])
+      }
+    }
+  }
+
+  /**
+  * Add a route to the global list
+  * @param {string} method
+  * @param {string} pathname
+  * @param {function} action
+  */
+  addRoute ({ method, pathname, action }) {
+    this.routes.push({
+      method: method.toUpperCase(),
+      pathname: pathname,
+      action: action
+    })
+  }
 
   /*****************************************************************
   * Formatting
   *****************************************************************/
 
   /**
-  * Format data before insertion into indexedDB
-  * @param {object} data
-  */
-  #formatBeforeInsertion (data) {
-    const formattedData = {}
-
-    for (const key in data) {
-      const value = data[key]
-
-      if (isObject(value)) {
-        formattedData[key] = this.#formatBeforeInsertion(value)
-      } else if (value instanceof Date) {
-        formattedData[key] = value.toJSON()
-      } else {
-        formattedData[key] = value
-      }
-    }
-
-    return formattedData
-  }
-
-  /**
   * Compare 2 arrays: remove old items, update existing items, create new items
   * @param {array} currentData
   * @param {array} newData
   */
-  #updateArrays (currentData, newData) {
+  #updateArray (currentData, newData) {
     // Create or update items
-    const currentDataIds = arrayToObject(currentData, this.primaryKey)
+    const currentDataIds = arrayToObject(currentData, 'id')
 
     return newData.map(newItem => {
       const newItemId = newItem[this.primaryKey]
       const currentItem = currentDataIds[newItemId]
 
       return currentItem
-        ? this.#updateObjects(currentItem, newItem)
+        ? this.#updateObject(currentItem, newItem)
         : newItem
     })
   }
@@ -58,7 +126,7 @@ export default class Store {
   * @param {object} currentData
   * @param {object} newData
   */
-  #updateObjects (currentData, newData) {
+  #updateObject (currentData, newData) {
     const updatedData = {}
 
     // Update existing keys
@@ -70,10 +138,10 @@ export default class Store {
         updatedData[key] = currentValue
       // Recursively update object
       } else if (isObject(currentValue) && isObject(newValue)) {
-        updatedData[key] = this.#updateObjects(currentValue, newValue)
+        updatedData[key] = this.#updateObject(currentValue, newValue)
       // Array
-      } else if (isArray(currentValue) && isArray(newValue)) {
-        updatedData[key] = this.#updateArrays(currentValue, newValue)
+      // } else if (isArray(currentValue) && isArray(newValue)) {
+      //   updatedData[key] = this.#updateArray(currentValue, newValue)
       // Normal values, currentValue null
       } else {
         updatedData[key] = newValue
@@ -93,101 +161,15 @@ export default class Store {
     return updatedData
   }
 
-
   /*****************************************************************
   * Public API
   *****************************************************************/
-
-  constructor (storize, options = {}) {
-    if (!options.storeName) {
-      throw new Error('[BackInFront] `storeName` is required')
-    }
-    if (!options.primaryKey) {
-      throw new Error(`[BackInFront] \`primaryKey\` is required on store ${options.storeName}`)
-    }
-    if (!options.endpoint) {
-      throw new Error(`[BackInFront] \`endpoint\` is required on store ${options.storeName}`)
-    }
-
-    // Required options
-    this.#storize = storize
-    this.storeName = options.storeName
-    this.primaryKey = options.primaryKey
-    this.endpoint = options.endpoint
-    this.beforeCreate = options.beforeCreate
-      ? options.beforeCreate
-      : () => null
-
-    // default
-    this.routes = []
-
-    // Register manual routes
-    if (options.routes) {
-      for (const route of options.routes) {
-        this.addRoute(route)
-      }
-    }
-
-    // Register predefined routes
-    if (options.autoroutes) {
-      const predefinedRoutes = {
-        'create': {
-          method: 'POST',
-          pathname: '/',
-          action: async ({ body, transaction }) => {
-            return this.create(body, transaction)
-          }
-        },
-        'list': {
-          method: 'GET',
-          pathname: '/',
-          action: async () => {
-            return this.findAndCountAll()
-          }
-        },
-        'retrieve': {
-          method: 'GET',
-          pathname: '/:primaryKey',
-          action: async ({ pathParams }) => {
-            return this.findOne(pathParams.primaryKey)
-          }
-        },
-        'update': {
-          method: 'PUT',
-          pathname: '/:primaryKey',
-          action: async ({ pathParams, body, transaction }) => {
-            return this.update(pathParams.primaryKey, body, transaction)
-          }
-        }
-      }
-
-      for (const autoroute of options.autoroutes) {
-        this.addRoute(predefinedRoutes[autoroute])
-      }
-    }
-
-    return this
-  }
-
-  /**
-  * Add a route to the global list
-  * @param {string} method
-  * @param {string} pathname
-  * @param {function} action
-  */
-  addRoute ({ method, pathname, action }) {
-    this.routes.push({
-      method: method.toUpperCase(),
-      pathname: pathname,
-      action: action
-    })
-  }
 
   /**
   * Count all items in the store
   */
   async count (transaction = null) {
-    const store = await this.#storize.openStore(this.storeName, 'readonly', transaction)
+    const store = await this.#backinfront.openStore(this.storeName, 'readonly', transaction)
     const count = await store.count()
     return count
   }
@@ -197,50 +179,57 @@ export default class Store {
   * @param {object} condition - list of filters (where, limit, offset, order)
   */
   async findAndCountAll (condition = null) {
-    const store = await this.#storize.openStore(this.storeName, 'readonly')
+    const store = await this.#backinfront.openStore(this.storeName, 'readonly')
 
     if (!condition) {
       const rows = await store.getAll()
       const count = rows.length
 
       return {
-        count,
-        rows
+        rows,
+        count
       }
     }
 
-    // Format condition members
     const limit = parseInt(condition.limit) || null
     const offset = parseInt(condition.offset) || null
-
+    const rows = []
     let count = 0
-    let added = 0
 
-    const rows = await this.#storize.iterate(store, condition.order, (row) => {
-      // Where
-      if (!QueryLanguage.isConditionValid(condition.where, row)) {
-        return false
+    // Initialize cursor params
+    let index = store
+    let direction = 'next'
+
+    if (condition.order) {
+      index = store.index(order[0])
+
+      if (order[1] === 'DESC') {
+        direction = 'prev'
+      }
+    }
+
+    let cursor = await index.openCursor(null, direction)
+
+    // Cursor iteration
+    while (cursor) {
+      if (QueryLanguage.isConditionValid(condition.where, cursor.value)) {
+        count += 1
+
+        // Offset
+        if (offset < count) {
+          // Limit
+          if (limit < rows.length) {
+            rows.push(cursor.value)
+          }
+        }
       }
 
-      count += 1
-
-      // Offset
-      if (offset >= count) {
-        return false
-      }
-      // Limit
-      if (limit === added) {
-        return false
-      }
-
-      added += 1
-
-      return true
-    })
+      cursor = await cursor.continue()
+    }
 
     return {
-      count,
-      rows
+      rows,
+      count
     }
   }
 
@@ -255,20 +244,20 @@ export default class Store {
 
   /**
   * Get an item with a primary key
-  * @param {string} primaryKey
+  * @param {string} primaryKeyValue
   */
-  async findOne (primaryKey, transaction = null) {
+  async findOne (primaryKeyValue, transaction = null) {
     // primaryKey is a condition if it's an object
-    if (isObject(primaryKey)) {
-      const rows = await this.findAll(primaryKey)
+    if (isObject(primaryKeyValue)) {
+      const rows = await this.findAll(primaryKeyValue)
       if (rows.length > 1) {
         throw new Error(`[BackInFront][findOne] Expecting one result, ${rows.length} found`)
       }
       return rows[0]
     }
 
-    const store = await this.#storize.openStore(this.storeName, 'readonly', transaction)
-    const row = await store.get(primaryKey)
+    const store = await this.#backinfront.openStore(this.storeName, 'readonly', transaction)
+    const row = await store.get(primaryKeyValue)
     return row
   }
 
@@ -276,17 +265,17 @@ export default class Store {
   * Clear the store
   */
   async clear (transaction = null) {
-    const store = await this.#storize.openStore(this.storeName, 'readwrite', transaction)
+    const store = await this.#backinfront.openStore(this.storeName, 'readwrite', transaction)
     await store.clear()
   }
 
   /**
   * Destroy one item
-  * @param {string} primaryKey
+  * @param {string} primaryKeyValue
   */
-  async destroy (primaryKey, transaction = null) {
-    const store = await this.#storize.openStore(this.storeName, 'readwrite', transaction)
-    await store.delete(primaryKey)
+  async destroy (primaryKeyValue, transaction = null) {
+    const store = await this.#backinfront.openStore(this.storeName, 'readwrite', transaction)
+    await store.delete(primaryKeyValue)
   }
 
   /**
@@ -297,61 +286,61 @@ export default class Store {
     let autocommit = false
 
     if (transaction === null) {
-      transaction = await this.#storize.getTransaction('readwrite', [this.storeName, this.#storize.syncQueueStoreName])
+      transaction = await this.#backinfront.getTransaction('readwrite', [this.storeName, this.#backinfront.syncQueueStoreName])
       autocommit = true
     }
 
-    const store = await this.#storize.openStore(this.storeName, 'readwrite', transaction)
+    const store = await this.#backinfront.openStore(this.storeName, 'readwrite', transaction)
     // Insert the new item
-    await this.beforeCreate({ data, transaction }, this.#storize.stores)
-    const formattedData = this.#formatBeforeInsertion(data)
-    const savedPrimaryKey = await store.add(formattedData)
+    this.beforeCreate(data)
+    const formattedData = this.#backinfront.formatDataBeforeSave(data)
+    const savedPrimaryKeyValue = await store.add(formattedData)
 
-    await this.#storize.addToSyncQueue(this.storeName, savedPrimaryKey, transaction)
+    await this.#backinfront.addToSyncQueue(this.storeName, savedPrimaryKeyValue, transaction)
 
     // Force commit if the function own the transaction
     if (autocommit && 'commit' in transaction) {
       transaction.commit()
     }
 
-    return store.get(savedPrimaryKey)
+    return store.get(savedPrimaryKeyValue)
   }
 
   /**
   * Update an item (or insert if not already existing)
-  * @param {string} primaryKey
+  * @param {string} primaryKeyValue
   * @param {object} data
   */
-  async update (primaryKey, data, transaction = null) {
+  async update (primaryKeyValue, data, transaction = null) {
     let autocommit = false
 
     if (transaction === null) {
-      transaction = await this.#storize.getTransaction('readwrite', [this.storeName, this.#storize.syncQueueStoreName])
+      transaction = await this.#backinfront.getTransaction('readwrite', [this.storeName, this.#backinfront.syncQueueStoreName])
       autocommit = true
     }
 
-    const store = await this.#storize.openStore(this.storeName, 'readwrite', transaction)
+    const store = await this.#backinfront.openStore(this.storeName, 'readwrite', transaction)
     // Check the consistency
-    if (
-      store.keyPath in data &&
-      primaryKey !== data[store.keyPath]
-    ) {
-      throw new Error('[BackInFront] primaryKey provided in `update` is different from the keyPath found in data')
+    if (this.primaryKey in data) {
+      throw new Error('[BackInFront][update] data param must include the primaryKey')
+    }
+    if (primaryKeyValue !== data[this.primaryKey]) {
+      throw new Error('[BackInFront][update] primary key provided in `update` does not match with data')
     }
     // Compare field by field recursively
-    const item = await store.get(primaryKey)
-    const updatedData = this.#updateObjects(item, data)
-    const formattedData = this.#formatBeforeInsertion(updatedData)
+    const item = await store.get(primaryKeyValue)
+    const updatedData = this.#updateObject(item, data, this.primaryKey)
+    const formattedData = this.#backinfront.formatDataBeforeSave(updatedData)
     // Store the new object
-    const savedPrimaryKey = await store.put(formattedData)
+    const savedPrimaryKeyValue = await store.put(formattedData)
 
-    await this.#storize.addToSyncQueue(this.storeName, savedPrimaryKey, transaction)
+    await this.#backinfront.addToSyncQueue(this.storeName, savedPrimaryKeyValue, transaction)
 
     // Force commit if the function own the transaction
     if (autocommit && 'commit' in transaction) {
       transaction.commit()
     }
 
-    return store.get(savedPrimaryKey)
+    return store.get(savedPrimaryKeyValue)
   }
 }
