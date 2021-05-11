@@ -27,7 +27,7 @@ export default class Backinfront {
   }
 
   #DB_OPERATIONS = {
-    'addStore': (transaction, { storeName, keyPath }) => {
+    'createStore': (transaction, { storeName, keyPath }) => {
       if (keyPath) {
         transaction.db.createObjectStore(storeName, { keyPath: keyPath })
       } else {
@@ -37,7 +37,7 @@ export default class Backinfront {
     'deleteStore': (transaction, { storeName }) => {
       transaction.db.deleteObjectStore(storeName)
     },
-    'addIndex': (transaction, { storeName, indexName, indexKeyPath }) => {
+    'createIndex': (transaction, { storeName, indexName, indexKeyPath }) => {
       transaction.objectStore(storeName).createIndex(indexName, indexKeyPath)
     },
     'deleteIndex': (transaction, { storeName, indexName }) => {
