@@ -159,6 +159,7 @@ export default class Backinfront {
   *****************************************************************/
 
   async migrationsReady () {
+    console.log('migration ready wait')
     if (!this.databaseConfigurationStarted) {
       console.log('doit apparaitre une fois')
       this.databaseConfigurationStarted = true
@@ -236,7 +237,7 @@ export default class Backinfront {
           }
         }
       }
-
+      console.log(this.databaseMigrations)
       this.databaseVersion = this.databaseMigrations.length
         ? db.version + 1
         : db.version
@@ -258,6 +259,7 @@ export default class Backinfront {
 
     const db = await openDB(this.databaseName, this.databaseVersion, {
       upgrade: (db, oldVersion, newVersion, transaction) => {
+        console.log(this.databaseMigrations)
         if (oldVersion < newVersion) {
           for (const migration of this.databaseMigrations) {
             const migrationType = migration[0]
