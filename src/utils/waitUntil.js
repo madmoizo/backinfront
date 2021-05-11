@@ -1,8 +1,10 @@
 /**
  * Wait for something
  */
-export default function waitUntil (resolveCondition, rejectMessage, onReject) {
-  const delay = 10 // secondes
+export default function waitUntil (resolveCondition, { timeout, interval, rejectMessage, onReject }) {
+  timeout = timeout || 30000
+  interval = interval || 50
+  rejectMessage = rejectMessage || 'waitUntil: timeout'
 
   return new Promise((resolve, reject) => {
     // Resolve immediately if the condition is already verified
@@ -10,21 +12,21 @@ export default function waitUntil (resolveCondition, rejectMessage, onReject) {
       resolve(true)
     // Async resolve
     } else {
-      const timeout = setTimeout(() => {
-        clearInterval(interval)
+      const timeoutHandler = setTimeout(() => {
+        clearInterval(intervalHandler)
         if (onReject) {
           onReject()
         }
         reject(new Error(rejectMessage))
-      }, delay * 1000)
+      }, timeout)
 
-      const interval = setInterval(() => {
+      const intervalHandler = setInterval(() => {
         if (resolveCondition()) {
-          clearTimeout(timeout)
-          clearInterval(interval)
+          clearTimeout(timeoutHandler)
+          clearInterval(intervalHandler)
           resolve(true)
         }
-      }, 50)
+      }, interval)
     }
   })
 }
