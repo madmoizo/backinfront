@@ -12,6 +12,7 @@ import joinPaths from './utils/joinPaths.js'
 import generateUUID from './utils/generateUUID.js'
 import urlToRegexp from './utils/urlToRegexp.js'
 import objectToJson from './utils/objectToJson.js'
+import waitUntil from './utils/waitUntil.js'
 
 
 export default class Backinfront {
@@ -51,6 +52,8 @@ export default class Backinfront {
   syncMetaStoreName = '__Meta'
   syncQueueStoreName = '__SyncQueue'
   databaseVersion = null
+  databaseConfigurationStarted = false
+  databaseConfigurationEnded = false
   databaseMigrations = []
   databaseSchemaSpec = {
     [this.syncMetaStoreName]: {
@@ -155,44 +158,75 @@ export default class Backinfront {
   * Indexeddb management
   *****************************************************************/
 
-  async migrate () {
-    this.databaseMigrations = []
-    const db = await openDB(this.databaseName)
+  async migrationReady () {
+    if (!this.databaseConfigurationStarted) {
+      console.log('doit apparaitre une fois')
+      this.databaseConfigurationStarted = true
 
-    // Remove old stuff
-    for (const storeName of db.objectStoreNames) {
-      // Delete or update indexes
-      if (storeName in this.databaseSchemaSpec) {
-        const storeSpec = this.databaseSchemaSpec[storeName]
-        const store = db.transaction(storeName, 'readonly').objectStore(storeName)
+      this.databaseMigrations = []
+      const db = await openDB(this.databaseName)
 
-        // Update or delete indexes
-        for (const indexName of store.indexNames) {
-          // Update index
-          if (indexName in storeSpec.indexes) {
-            const indexKeyPath = storeSpec.indexes[indexName]
-            if (indexKeyPath !== store.index(indexName).keyPath) {
+      // Remove old stuff
+      for (const storeName of db.objectStoreNames) {
+        // Delete or update indexes
+        if (storeName in this.databaseSchemaSpec) {
+          const storeSpec = this.databaseSchemaSpec[storeName]
+          const store = db.transaction(storeName, 'readonly').objectStore(storeName)
+
+          // Update or delete indexes
+          for (const indexName of store.indexNames) {
+            // Update index
+            if (indexName in storeSpec.indexes) {
+              const indexKeyPath = storeSpec.indexes[indexName]
+              if (indexKeyPath !== store.index(indexName).keyPath) {
+                this.databaseMigrations.push(['deleteIndex', {
+                  indexName
+                }])
+                this.databaseMigrations.push(['createIndex', {
+                  storeName,
+                  indexName,
+                  indexKeyPath
+                }])
+              }
+            // Delete index
+            } else {
               this.databaseMigrations.push(['deleteIndex', {
                 indexName
               }])
+            }
+          }
+
+          // Create indexes
+          for (const indexName in storeSpec.indexes) {
+            // indexNames type is DOMStringList https://developer.mozilla.org/fr/docs/Web/API/DOMStringList
+            if (!store.indexNames.contains(indexName)) {
+              const indexKeyPath = storeSpec.indexes[indexName]
               this.databaseMigrations.push(['createIndex', {
                 storeName,
                 indexName,
                 indexKeyPath
               }])
             }
-          // Delete index
-          } else {
-            this.databaseMigrations.push(['deleteIndex', {
-              indexName
-            }])
           }
+        // Delete store (and indexes implicitly)
+        } else {
+          this.databaseMigrations.push(['deleteStore', {
+            storeName
+          }])
         }
+      }
 
-        // Create indexes
-        for (const indexName in storeSpec.indexes) {
-          // indexNames type is DOMStringList https://developer.mozilla.org/fr/docs/Web/API/DOMStringList
-          if (!store.indexNames.contains(indexName)) {
+      // Create stores
+      for (const storeName in this.databaseSchemaSpec) {
+        // objectStoreNames type is DOMStringList https://developer.mozilla.org/fr/docs/Web/API/DOMStringList
+        if (!db.objectStoreNames.contains(storeName)) {
+          const storeSpec = this.databaseSchemaSpec[storeName]
+          this.databaseMigrations.push(['createStore', {
+            storeName,
+            keyPath: storeSpec.keyPath
+          }])
+
+          for (const indexName in storeSpec.indexes) {
             const indexKeyPath = storeSpec.indexes[indexName]
             this.databaseMigrations.push(['createIndex', {
               storeName,
@@ -201,40 +235,18 @@ export default class Backinfront {
             }])
           }
         }
-      // Delete store (and indexes implicitly)
-      } else {
-        this.databaseMigrations.push(['deleteStore', {
-          storeName
-        }])
       }
+
+      this.databaseVersion = this.databaseMigrations.length
+        ? db.version + 1
+        : db.version
+
+      db.close()
+
+      this.databaseConfigurationEnded = true
     }
 
-    // Create stores
-    for (const storeName in this.databaseSchemaSpec) {
-      // objectStoreNames type is DOMStringList https://developer.mozilla.org/fr/docs/Web/API/DOMStringList
-      if (!db.objectStoreNames.contains(storeName)) {
-        const storeSpec = this.databaseSchemaSpec[storeName]
-        this.databaseMigrations.push(['createStore', {
-          storeName,
-          keyPath: storeSpec.keyPath
-        }])
-
-        for (const indexName in storeSpec.indexes) {
-          const indexKeyPath = storeSpec.indexes[indexName]
-          this.databaseMigrations.push(['createIndex', {
-            storeName,
-            indexName,
-            indexKeyPath
-          }])
-        }
-      }
-    }
-
-    this.databaseVersion = this.databaseMigrations.length
-      ? db.version + 1
-      : db.version
-
-    db.close()
+    return waitUntil(() => this.databaseConfigurationEnded, 'Error during migration', 10000)
   }
 
   /**
@@ -242,9 +254,7 @@ export default class Backinfront {
   * proceed to pending migration
   */
   async #openDatabase () {
-    if (!this.databaseVersion) {
-      throw Error('database version cannot be null')
-    }
+    await migrationsReady()
 
     const db = await openDB(this.databaseName, this.databaseVersion, {
       upgrade: (db, oldVersion, newVersion, transaction) => {
