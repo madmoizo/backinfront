@@ -193,7 +193,8 @@ export default class Backinfront {
 
           // Create indexes
           for (const indexName in storeSpec.indexes) {
-            if (!store.indexNames.includes(indexName)) {
+            // indexNames type is DOMStringList https://developer.mozilla.org/fr/docs/Web/API/DOMStringList
+            if (!store.indexNames.contains(indexName)) {
               const indexKeyPath = storeSpec.indexes[indexName]
               this.databaseMigrations.push(['createIndex', {
                 storeName,
@@ -212,7 +213,8 @@ export default class Backinfront {
 
       // Create stores
       for (const storeName in this.databaseSchemaSpec) {
-        if (!dbinit.objectStoreNames.includes(storeName)) {
+        // objectStoreNames type is DOMStringList https://developer.mozilla.org/fr/docs/Web/API/DOMStringList
+        if (!dbinit.objectStoreNames.contains(storeName)) {
           const storeSpec = this.databaseSchemaSpec[storeName]
           this.databaseMigrations.push(['createStore', {
             storeName,
