@@ -25,17 +25,17 @@ export default class Store {
     } else {
       throw new Error(`[BackInFront] \`primaryKey\` is required on store ${options.storeName}`)
     }
+    if (options.endpoint) {
+      this.endpoint = options.endpoint
+    } else {
+      throw new Error(`[BackInFront][router] \`endpoint\` is required`)
+    }
+
     if (options.indexes) {
       this.indexes = options.indexes
     }
     if (options.beforeCreate) {
       this.beforeCreate = options.beforeCreate
-    }
-
-    if (options.endpoint) {
-      this.endpoint = options.endpoint
-    } else {
-      throw new Error(`[BackInFront][router] \`endpoint\` is required`)
     }
 
     // Register manual routes
