@@ -254,7 +254,7 @@ export default class Backinfront {
   * proceed to pending migration
   */
   async #openDatabase () {
-    await migrationsReady()
+    await this.migrationsReady()
 
     const db = await openDB(this.databaseName, this.databaseVersion, {
       upgrade: (db, oldVersion, newVersion, transaction) => {
