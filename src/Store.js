@@ -215,12 +215,11 @@ export default class Store {
       if (QueryLanguage.isConditionValid(condition.where, cursor.value)) {
         count += 1
 
-        // Offset
-        if (offset === null || count > offset) {
-          // Limit
-          if (limit === null || rows.length < limit) {
-            rows.push(cursor.value)
-          }
+        if (
+          (limit === null || rows.length < limit) &&
+          (offset === null || count > offset)
+        ) {
+          rows.push(cursor.value)
         }
       }
 
