@@ -155,76 +155,44 @@ export default class Backinfront {
   * Indexeddb management
   *****************************************************************/
 
-  /**
-  * Open the indexeddb database and
-  * proceed to pending migration
-  */
-  async #openDatabase () {
-    if (this.databaseVersion === null) {
-      this.databaseMigrations = []
-      const dbinit = await openDB(this.databaseName)
+  migrate () {
+    this.databaseMigrations = []
+    const db = await openDB(this.databaseName)
 
-      // Remove old stuff
-      for (const storeName of dbinit.objectStoreNames) {
-        // Delete or update indexes
-        if (storeName in this.databaseSchemaSpec) {
-          const storeSpec = this.databaseSchemaSpec[storeName]
-          const store = dbinit.transaction(storeName, 'readonly').objectStore(storeName)
+    // Remove old stuff
+    for (const storeName of db.objectStoreNames) {
+      // Delete or update indexes
+      if (storeName in this.databaseSchemaSpec) {
+        const storeSpec = this.databaseSchemaSpec[storeName]
+        const store = db.transaction(storeName, 'readonly').objectStore(storeName)
 
-          // Update or delete indexes
-          for (const indexName of store.indexNames) {
-            // Update index
-            if (indexName in storeSpec.indexes) {
-              const indexKeyPath = storeSpec.indexes[indexName]
-              if (indexKeyPath !== store.index(indexName).keyPath) {
-                this.databaseMigrations.push(['deleteIndex', {
-                  indexName
-                }])
-                this.databaseMigrations.push(['createIndex', {
-                  storeName,
-                  indexName,
-                  indexKeyPath
-                }])
-              }
-            // Delete index
-            } else {
+        // Update or delete indexes
+        for (const indexName of store.indexNames) {
+          // Update index
+          if (indexName in storeSpec.indexes) {
+            const indexKeyPath = storeSpec.indexes[indexName]
+            if (indexKeyPath !== store.index(indexName).keyPath) {
               this.databaseMigrations.push(['deleteIndex', {
                 indexName
               }])
-            }
-          }
-
-          // Create indexes
-          for (const indexName in storeSpec.indexes) {
-            // indexNames type is DOMStringList https://developer.mozilla.org/fr/docs/Web/API/DOMStringList
-            if (!store.indexNames.contains(indexName)) {
-              const indexKeyPath = storeSpec.indexes[indexName]
               this.databaseMigrations.push(['createIndex', {
                 storeName,
                 indexName,
                 indexKeyPath
               }])
             }
+          // Delete index
+          } else {
+            this.databaseMigrations.push(['deleteIndex', {
+              indexName
+            }])
           }
-        // Delete store (and indexes implicitly)
-        } else {
-          this.databaseMigrations.push(['deleteStore', {
-            storeName
-          }])
         }
-      }
 
-      // Create stores
-      for (const storeName in this.databaseSchemaSpec) {
-        // objectStoreNames type is DOMStringList https://developer.mozilla.org/fr/docs/Web/API/DOMStringList
-        if (!dbinit.objectStoreNames.contains(storeName)) {
-          const storeSpec = this.databaseSchemaSpec[storeName]
-          this.databaseMigrations.push(['createStore', {
-            storeName,
-            keyPath: storeSpec.keyPath
-          }])
-
-          for (const indexName in storeSpec.indexes) {
+        // Create indexes
+        for (const indexName in storeSpec.indexes) {
+          // indexNames type is DOMStringList https://developer.mozilla.org/fr/docs/Web/API/DOMStringList
+          if (!store.indexNames.contains(indexName)) {
             const indexKeyPath = storeSpec.indexes[indexName]
             this.databaseMigrations.push(['createIndex', {
               storeName,
@@ -233,23 +201,55 @@ export default class Backinfront {
             }])
           }
         }
+      // Delete store (and indexes implicitly)
+      } else {
+        this.databaseMigrations.push(['deleteStore', {
+          storeName
+        }])
       }
-
-      this.databaseVersion = this.databaseMigrations.length
-        ? dbinit.version + 1
-        : dbinit.version
-
-      dbinit.close()
     }
 
-    console.log(this.databaseMigrations)
+    // Create stores
+    for (const storeName in this.databaseSchemaSpec) {
+      // objectStoreNames type is DOMStringList https://developer.mozilla.org/fr/docs/Web/API/DOMStringList
+      if (!db.objectStoreNames.contains(storeName)) {
+        const storeSpec = this.databaseSchemaSpec[storeName]
+        this.databaseMigrations.push(['createStore', {
+          storeName,
+          keyPath: storeSpec.keyPath
+        }])
+
+        for (const indexName in storeSpec.indexes) {
+          const indexKeyPath = storeSpec.indexes[indexName]
+          this.databaseMigrations.push(['createIndex', {
+            storeName,
+            indexName,
+            indexKeyPath
+          }])
+        }
+      }
+    }
+
+    this.databaseVersion = this.databaseMigrations.length
+      ? db.version + 1
+      : db.version
+
+    db.close()
+  }
+
+  /**
+  * Open the indexeddb database and
+  * proceed to pending migration
+  */
+  async #openDatabase () {
+    if (!this.databaseVersion) {
+      throw Error('database version cannot be null')
+    }
 
     const db = await openDB(this.databaseName, this.databaseVersion, {
       upgrade: (db, oldVersion, newVersion, transaction) => {
         if (oldVersion < newVersion) {
           for (const migration of this.databaseMigrations) {
-            console.log(migration)
-            console.log(transaction)
             const migrationType = migration[0]
             const migrationOptions = migration[1]
             this.#DB_OPERATIONS[migrationType](transaction, migrationOptions)
