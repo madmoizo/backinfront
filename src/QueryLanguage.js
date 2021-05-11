@@ -55,9 +55,9 @@ export default class QueryLanguage {
       }
 
       // Support dot notation for nested field
-      let fieldvalue
+      let storeValue
       try {
-        fieldvalue = conditionName
+        storeValue = conditionName
           .split('.')
           .reduce((accu, current) => accu[current], row)
       } catch (error) {
@@ -67,7 +67,7 @@ export default class QueryLanguage {
       // Build test
       if (isObject(conditionValue)) {
         for (const operator in conditionValue) {
-          if (!this.#OPERATORS[operator](fieldvalue, conditionValue[operator])) {
+          if (!this.#OPERATORS[operator](storeValue, conditionValue[operator])) {
             return false
           }
         }
@@ -75,7 +75,7 @@ export default class QueryLanguage {
       }
 
       // Default case is for equality check
-      return this.#OPERATORS.$equal(fieldvalue, conditionValue)
+      return this.#OPERATORS.$equal(storeValue, conditionValue)
     }
 
     return true
