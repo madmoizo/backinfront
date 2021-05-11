@@ -27,9 +27,9 @@ export default class Backinfront {
   }
 
   #DB_OPERATIONS = {
-    'addStore': (transaction, { storeName, primaryKey }) => {
-      if (primaryKey) {
-        transaction.db.createObjectStore(storeName, { keyPath: primaryKey })
+    'addStore': (transaction, { storeName, keyPath }) => {
+      if (keyPath) {
+        transaction.db.createObjectStore(storeName, { keyPath: keyPath })
       } else {
         transaction.db.createObjectStore(storeName)
       }
@@ -37,8 +37,8 @@ export default class Backinfront {
     'deleteStore': (transaction, { storeName }) => {
       transaction.db.deleteObjectStore(storeName)
     },
-    'addIndex': (transaction, { storeName, indexName, indexKey }) => {
-      transaction.objectStore(storeName).createIndex(indexName, indexKey)
+    'addIndex': (transaction, { storeName, indexName, indexKeyPath }) => {
+      transaction.objectStore(storeName).createIndex(indexName, indexKeyPath)
     },
     'deleteIndex': (transaction, { storeName, indexName }) => {
       transaction.objectStore(storeName).deleteIndex(indexName)
@@ -53,7 +53,9 @@ export default class Backinfront {
   databaseVersion = null
   databaseMigrations = []
   databaseSchemaSpec = {
-    [this.syncMetaStoreName]: null,
+    [this.syncMetaStoreName]: {
+      keyPath: null
+    },
     [this.syncQueueStoreName]: {
       keyPath: 'id',
       indexes: {
