@@ -161,6 +161,7 @@ export default class Backinfront {
   */
   async #openDatabase () {
     if (this.databaseVersion === null) {
+      this.databaseMigrations = []
       const dbinit = await openDB(this.databaseName)
 
       // Remove old stuff
