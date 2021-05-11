@@ -159,12 +159,12 @@ export default class Backinfront {
   */
   async #openDatabase () {
     if (this.databaseVersion === null) {
-      const tmpdb = await openDB(this.databaseName)
-      const transaction = tmpdb.transaction(db.objectStoreNames, 'readonly')
-      tmpdb.close()
+      const dbinit = await openDB(this.databaseName)
+      const transaction = dbinit.transaction(dbinit.objectStoreNames, 'readonly')
+      dbinit.close()
 
       // Remove old stuff
-      for (const storeName of db.objectStoreNames) {
+      for (const storeName of dbinit.objectStoreNames) {
         // Delete or update indexes
         if (storeName in this.databaseSchemaSpec) {
           const storeSpec = this.databaseSchemaSpec[storeName]
@@ -214,7 +214,7 @@ export default class Backinfront {
 
       // Create stores
       for (const storeName in this.databaseSchemaSpec) {
-        if (!db.objectStoreNames.includes(storeName)) {
+        if (!dbinit.objectStoreNames.includes(storeName)) {
           const storeSpec = this.databaseSchemaSpec[storeName]
           this.databaseMigrations.push(['createStore', {
             storeName,
@@ -233,8 +233,8 @@ export default class Backinfront {
       }
 
       this.databaseVersion = this.databaseMigrations.length
-        ? tmpdb.version + 1
-        : tmpdb.version
+        ? dbinit.version + 1
+        : dbinit.version
     }
 
     const db = await openDB(this.databaseName, this.databaseVersion, {
