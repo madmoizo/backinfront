@@ -158,7 +158,7 @@ export default class Backinfront {
   * Indexeddb management
   *****************************************************************/
 
-  async migrationReady () {
+  async migrationsReady () {
     if (!this.databaseConfigurationStarted) {
       console.log('doit apparaitre une fois')
       this.databaseConfigurationStarted = true
