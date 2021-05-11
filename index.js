@@ -1,5 +1,1 @@
-import StoresManager from './src/StoresManager.js'
-
-
-export const Backinfront = StoresManager
-export default Backinfront
+export { default, default as Backinfront } from './src/Backinfront.js'
