@@ -155,7 +155,7 @@ export default class Backinfront {
   * Indexeddb management
   *****************************************************************/
 
-  migrate () {
+  async migrate () {
     this.databaseMigrations = []
     const db = await openDB(this.databaseName)
 
