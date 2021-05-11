@@ -212,13 +212,14 @@ export default class Store {
 
     // Cursor iteration
     while (cursor) {
+      console.log(cursor.value)
       if (QueryLanguage.isConditionValid(condition.where, cursor.value)) {
         count += 1
 
         // Offset
-        if (offset < count) {
+        if (count > offset) {
           // Limit
-          if (limit < rows.length) {
+          if (rows.length < limit) {
             rows.push(cursor.value)
           }
         }
