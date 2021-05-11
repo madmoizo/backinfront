@@ -576,7 +576,7 @@ export default class Backinfront {
     // Process filter options
     const storesToInclude = filterOptions.include || []
     const storesToExclude = filterOptions.exclude || []
-    const storeNames = Object.entries(filterOptions)
+    const storeNames = Object.entries(this.stores)
       .filter(([storeName, value]) => {
         if (storesToExclude.includes(storeName)) {
           return false
