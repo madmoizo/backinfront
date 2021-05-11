@@ -570,8 +570,8 @@ export default class Backinfront {
   */
   async populate (filterOptions) {
     // Process filter options
-    const storesToInclude = options.include || []
-    const storesToExclude = options.exclude || []
+    const storesToInclude = filterOptions.include || []
+    const storesToExclude = filterOptions.exclude || []
     const storeNames = Object.entries(filterOptions)
       .filter(([storeName, value]) => {
         if (storesToExclude.includes(storeName)) {
