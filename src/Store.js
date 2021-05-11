@@ -201,9 +201,9 @@ export default class Store {
     let direction = 'next'
 
     if (condition.order) {
-      index = store.index(order[0])
+      index = store.index(condition.order[0])
 
-      if (order[1] === 'DESC') {
+      if (condition.order[1] === 'DESC') {
         direction = 'prev'
       }
     }
