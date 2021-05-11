@@ -241,10 +241,14 @@ export default class Backinfront {
       dbinit.close()
     }
 
+    console.log(this.databaseMigrations)
+
     const db = await openDB(this.databaseName, this.databaseVersion, {
       upgrade: (db, oldVersion, newVersion, transaction) => {
         if (oldVersion < newVersion) {
           for (const migration of this.databaseMigrations) {
+            console.log(migration)
+            console.log(transaction)
             const migrationType = migration[0]
             const migrationOptions = migration[1]
             this.#DB_OPERATIONS[migrationType](transaction, migrationOptions)
@@ -252,6 +256,7 @@ export default class Backinfront {
         }
       }
     })
+
     return db
   }
 
