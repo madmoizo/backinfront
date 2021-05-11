@@ -178,9 +178,14 @@ export default class Backinfront {
           for (const indexName of store.indexNames) {
             // Update index
             if (indexName in storeSpec.indexes) {
-              const indexKeyPath = storeSpec.indexes[indexName]
-              if (indexKeyPath !== store.index(indexName).keyPath) {
+              const indexKeyPath = store.index(indexName).keyPath
+              const indexKeyPathSpec = storeSpec.indexes[indexName]
+              if (
+                (isArray(indexKeyPathSpec) && isArray(indexKeyPath) && indexKeyPath.some((item, position) => item !== indexKeyPathSpec[position])) ||
+                indexKeyPathSpec !== indexKeyPath
+              ) {
                 this.databaseMigrations.push(['deleteIndex', {
+                  storeName,
                   indexName
                 }])
                 this.databaseMigrations.push(['createIndex', {
@@ -192,6 +197,7 @@ export default class Backinfront {
             // Delete index
             } else {
               this.databaseMigrations.push(['deleteIndex', {
+                storeName,
                 indexName
               }])
             }
