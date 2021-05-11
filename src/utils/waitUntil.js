@@ -2,7 +2,7 @@
  * Wait for something
  */
 export default function waitUntil (resolveCondition, rejectMessage, onReject) {
-  const delay = 20 // secondes
+  const delay = 10 // secondes
 
   return new Promise((resolve, reject) => {
     // Resolve immediately if the condition is already verified

@@ -246,7 +246,7 @@ export default class Backinfront {
       this.databaseConfigurationEnded = true
     }
 
-    return waitUntil(() => this.databaseConfigurationEnded, 'Error during migration', 10000)
+    return waitUntil(() => this.databaseConfigurationEnded, 'Error during migration')
   }
 
   /**
