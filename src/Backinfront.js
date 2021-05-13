@@ -204,8 +204,7 @@ export default class Backinfront {
                   storeName: storeNameOld,
                   indexName: indexNameOld
                 }
-              })
-              databaseMigrations.push({
+              }, {
                 type: 'createIndex',
                 params: {
                   storeName: storeNameOld,
