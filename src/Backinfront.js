@@ -159,11 +159,12 @@ export default class Backinfront {
 
   async #configureDatabase () {
     const databaseMigrations = []
-
-    // Build old schema
     const databaseSchemaNew = this.databaseSchema
+
+    // Parse the current database schema
     const databaseSchemaOld = {}
     const db = await openDB(this.databaseName)
+    const databaseVersion = db.version
     for (const storeName of db.objectStoreNames) {
       const store = db.transaction(storeName, 'readonly').objectStore(storeName)
       const indexes = {}
@@ -177,13 +178,13 @@ export default class Backinfront {
     }
     db.close()
 
-    // Remove old stuff
+    // Delete stores, [Delete, Update, Create] indexes
     for (const storeNameOld in databaseSchemaOld) {
       if (storeNameOld in databaseSchemaNew) {
         const storeNew = databaseSchemaNew[storeNameOld]
         const storeOld = databaseSchemaOld[storeNameOld]
 
-        // Update or delete indexes
+        // [Delete, Update] indexes
         for (const indexNameOld in storeOld.indexes) {
           // Update index
           if (indexNameOld in storeNew.indexes) {
@@ -237,7 +238,7 @@ export default class Backinfront {
       }
     }
 
-    // Create new stuff
+    // Create stores
     for (const storeNameNew in databaseSchemaNew) {
       if (!(storeNameNew in databaseSchemaOld)) {
         const storeNew = databaseSchemaNew[storeNameNew]
@@ -265,7 +266,7 @@ export default class Backinfront {
 
     // Apply migrations immediately
     if (databaseMigrations.length) {
-      const dbUpgrade = await openDB(this.databaseName, db.version + 1, {
+      const dbUpgrade = await openDB(this.databaseName, databaseVersion + 1, {
         upgrade: (db, oldVersion, newVersion, transaction) => {
           for (const migration of databaseMigrations) {
             this.#DB_OPERATIONS[migration.type](transaction, migration.params)
