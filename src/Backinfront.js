@@ -165,15 +165,19 @@ export default class Backinfront {
     const databaseSchemaOld = {}
     const db = await openDB(this.databaseName)
     const databaseVersion = db.version
-    for (const storeName of db.objectStoreNames) {
-      const store = db.transaction(storeName, 'readonly').objectStore(storeName)
-      const indexes = {}
-      for (const indexName of store.indexNames) {
-        indexes[indexName] = store.index(indexName).keyPath
-      }
-      databaseSchemaOld[storeName] = {
-        keyPath: store.keyPath,
-        indexes: indexes
+
+    if (db.objectStoreNames.length) { // https://developer.mozilla.org/fr/docs/Web/API/DOMStringList
+      const transaction = db.transaction(db.objectStoreNames, 'readonly')
+      for (const storeName of db.objectStoreNames) {
+        const store = transaction.objectStore(storeName)
+        const indexes = {}
+        for (const indexName of store.indexNames) {
+          indexes[indexName] = store.index(indexName).keyPath
+        }
+        databaseSchemaOld[storeName] = {
+          keyPath: store.keyPath,
+          indexes: indexes
+        }
       }
     }
     db.close()
