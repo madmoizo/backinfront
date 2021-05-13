@@ -166,7 +166,6 @@ export default class Backinfront {
     const db = await openDB(this.databaseName)
     for (const storeName of db.objectStoreNames) {
       const store = db.transaction(storeName, 'readonly').objectStore(storeName)
-      db.close()
       const indexes = {}
       for (const indexName of store.indexNames) {
         indexes[indexName] = store.index(indexName).keyPath
@@ -176,6 +175,7 @@ export default class Backinfront {
         indexes: indexes
       }
     }
+    db.close()
 
     // Remove old stuff
     for (const storeNameOld in databaseSchemaOld) {
