@@ -7,9 +7,11 @@ import arrayToObject from './utils/arrayToObject.js'
 
 export default class Store {
   #backinfront
+  storeName
+  primaryKey
+  indexes = {}
   endpoint
   routes = []
-  indexes = {}
   beforeCreate = (data) => null
 
   constructor (backinfront, options = {}) {
@@ -40,13 +42,6 @@ export default class Store {
 
     // Register manual routes
     if (options.routes) {
-      for (const route of options.routes) {
-        this.addRoute(route)
-      }
-    }
-
-    // Register predefined routes
-    if (options.autoroutes) {
       const predefinedRoutes = {
         'create': {
           method: 'POST',
@@ -78,8 +73,12 @@ export default class Store {
         }
       }
 
-      for (const autoroute of options.autoroutes) {
-        this.addRoute(predefinedRoutes[autoroute])
+      for (const route of options.routes) {
+        if (isString(route)) {
+          this.addRoute(predefinedRoutes[route])
+        } else {
+          this.addRoute(route)
+        }
       }
     }
   }
@@ -108,11 +107,12 @@ export default class Store {
   * @param {array} newData
   */
   #updateArray (currentData, newData) {
+    // TODO: find a way to not hardcode primary key 'id' (will require the store schema)
     // Create or update items
     const currentDataIds = arrayToObject(currentData, 'id')
 
     return newData.map(newItem => {
-      const newItemId = newItem[this.primaryKey]
+      const newItemId = newItem['id']
       const currentItem = currentDataIds[newItemId]
 
       return currentItem
@@ -140,8 +140,8 @@ export default class Store {
       } else if (isObject(currentValue) && isObject(newValue)) {
         updatedData[key] = this.#updateObject(currentValue, newValue)
       // Array
-      // } else if (isArray(currentValue) && isArray(newValue)) {
-      //   updatedData[key] = this.#updateArray(currentValue, newValue)
+      } else if (isArray(currentValue) && isArray(newValue)) {
+        updatedData[key] = this.#updateArray(currentValue, newValue)
       // Normal values, currentValue null
       } else {
         updatedData[key] = newValue
@@ -167,6 +167,7 @@ export default class Store {
 
   /**
   * Count all items in the store
+  * @param {IDBTransaction} transaction
   */
   async count (transaction = null) {
     const store = await this.#backinfront.openStore(this.storeName, 'readonly', transaction)
@@ -235,6 +236,7 @@ export default class Store {
   /**
   * Get all items
   * @param {object} condition - list of filters (where, limit, offset, order)
+  * @return {array}
   */
   async findAll (condition = null) {
     const { rows } = await this.findAndCountAll(condition)
@@ -244,6 +246,7 @@ export default class Store {
   /**
   * Get an item with a primary key
   * @param {string} primaryKeyValue
+  * @return {object}
   */
   async findOne (primaryKeyValue, transaction = null) {
     // primaryKey is a condition if it's an object
@@ -262,6 +265,7 @@ export default class Store {
 
   /**
   * Clear the store
+  * @param {IDBTransaction} transaction
   */
   async clear (transaction = null) {
     const store = await this.#backinfront.openStore(this.storeName, 'readwrite', transaction)
@@ -271,6 +275,7 @@ export default class Store {
   /**
   * Destroy one item
   * @param {string} primaryKeyValue
+  * @param {IDBTransaction} transaction
   */
   async destroy (primaryKeyValue, transaction = null) {
     const store = await this.#backinfront.openStore(this.storeName, 'readwrite', transaction)
@@ -280,6 +285,7 @@ export default class Store {
   /**
   * Insert a new item
   * @param {object} data
+  * @param {IDBTransaction} transaction
   */
   async create (data, transaction = null) {
     let autocommit = false
@@ -309,6 +315,7 @@ export default class Store {
   * Update an item (or insert if not already existing)
   * @param {string} primaryKeyValue
   * @param {object} data
+  * @param {IDBTransaction} transaction
   */
   async update (primaryKeyValue, data, transaction = null) {
     let autocommit = false
