@@ -9,7 +9,7 @@
     "type": "git",
     "url": "git://github.com/frlinw/backinfront.git"
   },
-  "author": "Matthieu Dambrune",
+  "author": "frlinw",
   "license": "ISC",
   "dependencies": {
     "idb": "^6.0.0"
