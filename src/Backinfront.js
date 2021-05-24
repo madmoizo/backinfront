@@ -13,6 +13,7 @@ import generateUUID from './utils/generateUUID.js'
 import urlToRegexp from './utils/urlToRegexp.js'
 import objectToJson from './utils/objectToJson.js'
 import waitUntil from './utils/waitUntil.js'
+import deduplicateArray from './utils/deduplicateArray.js'
 
 
 export default class Backinfront {
@@ -47,13 +48,13 @@ export default class Backinfront {
   }
 
   #syncInProgress = false
+  databaseConfigurationStarted = false
+  databaseConfigurationEnded = false
   routes = []
   stores = {}
   syncMetaStoreName = '__Meta'
   syncQueueStoreName = '__SyncQueue'
   databaseVersion = null
-  databaseConfigurationStarted = false
-  databaseConfigurationEnded = false
   databaseSchema = {
     [this.syncMetaStoreName]: {
       keyPath: null
@@ -156,7 +157,9 @@ export default class Backinfront {
   /*****************************************************************
   * Indexeddb management
   *****************************************************************/
-
+  /**
+   * Discover and apply database's migrations
+   */
   async #configureDatabase () {
     const databaseMigrations = []
     const databaseSchemaNew = this.databaseSchema
@@ -280,7 +283,9 @@ export default class Backinfront {
     }
   }
 
-
+  /**
+   * Wait until the database is ready to handle requests
+   */
   async #databaseReady () {
     // Configure database only on the very first call
     if (!this.databaseConfigurationStarted) {
@@ -307,8 +312,10 @@ export default class Backinfront {
   }
 
   /**
-  * Get a transaction
-  */
+   * Get a transaction
+   * @param  {} mode
+   * @param  {} storeNames=null
+   */
   async getTransaction (mode, storeNames = null) {
     await this.#databaseReady()
     const db = await openDB(this.databaseName)
@@ -321,8 +328,11 @@ export default class Backinfront {
   }
 
   /**
-  * Open the store
-  */
+   * Open the store
+   * @param  {} storeName
+   * @param  {} mode
+   * @param  {} transaction=null
+   */
   async openStore (storeName, mode, transaction = null) {
     transaction = transaction || await this.getTransaction(mode, storeName)
     const store = transaction.objectStore(storeName)
@@ -333,18 +343,30 @@ export default class Backinfront {
   * Sync management
   *****************************************************************/
 
+  /**
+   * Get a value from the key-value store owned by the lib
+   * @param  {string} key
+   */
   async #getMeta (key) {
     const store = await this.openStore(this.syncMetaStoreName, 'readonly')
     const value = await store.get(key)
     return value
   }
 
+  /**
+   * Set a value from the key-value store owned by the lib
+   * @param {string} key
+   * @param {string} value
+   */
   async #setMeta (key, value) {
     const store = await this.openStore(this.syncMetaStoreName, 'readwrite')
     await store.put(value, key)
   }
 
-  async #getFromSyncQueue () {
+  /**
+   * Get all items from the queue store owned by the lib
+   */
+  async #getAllFromSyncQueue () {
     const rows = []
     const store = await this.openStore(this.syncQueueStoreName, 'readonly')
     let cursor = await store.index('createdAt').openCursor(null, 'prev')
@@ -355,11 +377,20 @@ export default class Backinfront {
     return rows
   }
 
+  /**
+   * Remove all itemms from the queue store owned by the lib
+   */
   async #clearSyncQueue () {
     const store = await this.openStore(this.syncQueueStoreName, 'readwrite')
     await store.clear()
   }
 
+  /**
+   * Add a new item to the queue store owned by the lib
+   * @param {string} storeName
+   * @param {string} primaryKey
+   * @param {IDBTransaction} transaction
+   */
   async addToSyncQueue (storeName, primaryKey, transaction) {
     const store = await this.openStore(this.syncQueueStoreName, transaction)
     await store.add({
@@ -376,7 +407,7 @@ export default class Backinfront {
 
   /**
   * Fetch helper to build the request url
-  * @param {object} { pathname, searchParams }
+  * @param {object} options
   */
   #buildRequestUrl ({ pathname, searchParams }) {
     let requestUrl = joinPaths(this.baseUrl, pathname)
@@ -464,22 +495,25 @@ export default class Backinfront {
 
   /**
   * Find a route in the global list
-  * @param {object} request
+  * @param {Request} request
   */
   #findRouteFromRequest (request) {
-    if (!request.url.startsWith(this.baseUrl)) {
+    const urlToTest = getUrlPath(new URL(request.url))
+
+    if (!urlToTest.startsWith(this.baseUrl)) {
       return undefined
     }
 
     return this.routes
       .filter(route => request.method === route.method)
-      .find(route => route.regexp.test(getUrlPath(new URL(request.url))))
+      .find(route => route.regexp.test(urlToTest))
   }
 
   /**
   * Route handler inside service worker fetch
   * @param {object} route
-  * @param {object} request
+  * @param {Request} request
+  * @returns {Response}
   */
   async #getRouteResponse (route, request) {
     const ctx = {
@@ -537,11 +571,11 @@ export default class Backinfront {
     } catch (error) {
       errorCode = 'ACTION_ERROR'
 
-      this.onRouteActionError({ route, error })
-
       if (ctx.transaction) {
         ctx.transaction.abort()
       }
+
+      this.onRouteActionError({ route, error })
     }
 
     // Response
@@ -673,19 +707,16 @@ export default class Backinfront {
     this.#syncInProgress = true
 
     try {
-      const syncQueueItems = await this.#getFromSyncQueue()
-
-      // Deduplicates result
-      const syncQueueItemsDeduplicated = syncQueueItems.filter((value, index, array) => index === array.findIndex(item => (item.place === value.place && item.name === value.name)))
-
+      const syncQueueItems = await this.#getAllFromSyncQueue()
       // Retrieve data to sync
       const clientDataToSync = await Promise.all(
-        syncQueueItemsDeduplicated.map(async ({ createdAt, modelName, primaryKey }) => ({
-          createdAt,
-          modelName,
-          primaryKey,
-          data: await this.stores[modelName].findOne(primaryKey)
-        }))
+        deduplicateArray(syncQueueItems, ['primaryKey','modelName'])
+          .map(async ({ createdAt, modelName, primaryKey }) => ({
+            createdAt,
+            modelName,
+            primaryKey,
+            data: await this.stores[modelName].findOne(primaryKey)
+          }))
       )
 
       // Init lastChangeAt
