@@ -1,7 +1,6 @@
 
-<p align="center">
-  ![Logo](/docs/logo.png?raw=true)
-</p>
+![Logo](/docs/logo.png?raw=true)
+
 
 # BackInFront
 
