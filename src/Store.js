@@ -74,10 +74,10 @@ export default class Store {
       }
 
       for (const route of options.routes) {
-        if (isString(route)) {
-          this.addRoute(predefinedRoutes[route])
-        } else {
+        if (isObject(route)) {
           this.addRoute(route)
+        } else {
+          this.addRoute(predefinedRoutes[route])
         }
       }
     }
