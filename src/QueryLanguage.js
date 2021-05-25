@@ -25,7 +25,7 @@ export default class QueryLanguage {
   */
   static addOperator (operatorName, operatorAction) {
     if (!operatorName.startsWith('$') || operatorName.length === 1) {
-      throw Error('[BackInFront] An operator name must start with $')
+      throw Error('[Backinfront] An operator name must start with $')
     }
 
     this.#OPERATORS[operatorName] = operatorAction

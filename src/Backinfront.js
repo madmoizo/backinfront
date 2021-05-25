@@ -86,22 +86,22 @@ export default class Backinfront {
     if (options.databaseName) {
       this.databaseName = options.databaseName
     } else {
-      throw new Error('[BackInFront] `databaseName` is required')
+      throw new Error('[Backinfront] `databaseName` is required')
     }
     if (options.baseUrl) {
       this.baseUrl = options.baseUrl
     } else {
-      throw new Error('[BackInFront] `baseUrl` is required')
+      throw new Error('[Backinfront] `baseUrl` is required')
     }
     if (options.syncEndpoint) {
       this.syncEndpoint = options.syncEndpoint
     } else {
-      throw new Error('[BackInFront] `syncEndpoint` is required')
+      throw new Error('[Backinfront] `syncEndpoint` is required')
     }
     if (options.populateEndpoint) {
       this.populateEndpoint = options.populateEndpoint
     } else {
-      throw new Error('[BackInFront] `populateEndpoint` is required')
+      throw new Error('[Backinfront] `populateEndpoint` is required')
     }
     if (options.formatBeforeSave) {
       this.formatBeforeSave = options.formatBeforeSave
@@ -478,10 +478,10 @@ export default class Backinfront {
       fetchResponse = await fetch(fetchRequest)
 
       if (!fetchResponse.ok) {
-        throw new Error('[BackInFront][Fetch] Response status is not ok')
+        throw new Error('[Backinfront][Fetch] Response status is not ok')
       }
     } catch (error) {
-      throw new Error('[BackInFront][Fetch] Impossible to fetch data')
+      throw new Error('[Backinfront][Fetch] Impossible to fetch data')
     }
 
     const serverData = await fetchResponse.json()
@@ -563,9 +563,7 @@ export default class Backinfront {
       result = await route.action(ctx, this.stores)
 
       // Progressive ehancement: commit not supported by safari (last check: 10/04/21)
-      if (ctx.transaction && 'commit' in ctx.transaction) {
-        ctx.transaction.commit()
-      }
+      ctx.transaction.commit?.()
 
       this.onRouteActionSuccess({ route, result })
     } catch (error) {
@@ -675,13 +673,12 @@ export default class Backinfront {
         }
       })
 
-      const transaction = await this.getTransaction('readwrite')
-
       await Promise.all(
-        Object
-          .keys(serverDataToSync)
+        Object.keys(serverDataToSync)
           .map(async (storeName) => {
-            const store = await this.openStore(storeName, 'readwrite', transaction)
+            // Here we use one transaction per store instead of a global one
+            // because high number of inserts on the same transaction can be slow
+            const store = await this.openStore(storeName, 'readwrite')
             const rows = serverDataToSync[storeName]
 
             return Promise.all(

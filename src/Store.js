@@ -20,17 +20,17 @@ export default class Store {
     if (options.storeName) {
       this.storeName = options.storeName
     } else {
-      throw new Error('[BackInFront] `storeName` is required')
+      throw new Error('[Backinfront] `storeName` is required')
     }
     if (options.primaryKey) {
       this.primaryKey = options.primaryKey
     } else {
-      throw new Error(`[BackInFront] \`primaryKey\` is required on store ${options.storeName}`)
+      throw new Error(`[Backinfront] \`primaryKey\` is required on store ${options.storeName}`)
     }
     if (options.endpoint) {
       this.endpoint = options.endpoint
     } else {
-      throw new Error(`[BackInFront][router] \`endpoint\` is required`)
+      throw new Error(`[Backinfront][router] \`endpoint\` is required`)
     }
 
     if (options.indexes) {
@@ -253,7 +253,7 @@ export default class Store {
     if (isObject(primaryKeyValue)) {
       const rows = await this.findAll(primaryKeyValue)
       if (rows.length > 1) {
-        throw new Error(`[BackInFront][findOne] Expecting one result, ${rows.length} found`)
+        throw new Error(`[Backinfront][findOne] Expecting one result, ${rows.length} found`)
       }
       return rows[0]
     }
@@ -304,8 +304,8 @@ export default class Store {
     await this.#backinfront.addToSyncQueue(this.storeName, savedPrimaryKeyValue, transaction)
 
     // Force commit if the function own the transaction
-    if (autocommit && 'commit' in transaction) {
-      transaction.commit()
+    if (autocommit) {
+      transaction.commit?.()
     }
 
     return store.get(savedPrimaryKeyValue)
@@ -328,10 +328,10 @@ export default class Store {
     const store = await this.#backinfront.openStore(this.storeName, 'readwrite', transaction)
     // Check the consistency
     if (this.primaryKey in data) {
-      throw new Error('[BackInFront][update] data param must include the primaryKey')
+      throw new Error('[Backinfront][update] data param must include the primaryKey')
     }
     if (primaryKeyValue !== data[this.primaryKey]) {
-      throw new Error('[BackInFront][update] primary key provided in `update` does not match with data')
+      throw new Error('[Backinfront][update] primary key provided in `update` does not match with data')
     }
     // Compare field by field recursively
     const item = await store.get(primaryKeyValue)
@@ -343,8 +343,8 @@ export default class Store {
     await this.#backinfront.addToSyncQueue(this.storeName, savedPrimaryKeyValue, transaction)
 
     // Force commit if the function own the transaction
-    if (autocommit && 'commit' in transaction) {
-      transaction.commit()
+    if (autocommit) {
+      transaction.commit?.()
     }
 
     return store.get(savedPrimaryKeyValue)
