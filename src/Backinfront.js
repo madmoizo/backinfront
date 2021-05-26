@@ -72,14 +72,16 @@ export default class Backinfront {
     }
   }
 
-  #syncInProgress = false
   #databaseConfigurationStarted = false
   #databaseConfigurationEnded = false
+  #syncInProgress = false
+  #syncMetaStoreName = '__Meta'
+  #syncQueueStoreName = '__SyncQueue'
   #databaseSchema = {
-    [this.syncMetaStoreName]: {
+    [this.#syncMetaStoreName]: {
       keyPath: null
     },
-    [this.syncQueueStoreName]: {
+    [this.#syncQueueStoreName]: {
       keyPath: 'id',
       indexes: {
         'createdAt': 'createdAt'
@@ -88,9 +90,6 @@ export default class Backinfront {
   }
   routes = []
   stores = {}
-  syncMetaStoreName = '__Meta'
-  syncQueueStoreName = '__SyncQueue'
-
   authToken = () => null
   routeState = () => null
   formatRouteSearchParam = (value) => value
@@ -394,7 +393,7 @@ export default class Backinfront {
    * @param  {string} key
    */
   async #getMeta (key) {
-    const store = await this.openStore(this.syncMetaStoreName, 'readonly')
+    const store = await this.openStore(this.#syncMetaStoreName, 'readonly')
     const value = await store.get(key)
     return value
   }
@@ -405,7 +404,7 @@ export default class Backinfront {
    * @param {any} value
    */
   async #setMeta (key, value) {
-    const store = await this.openStore(this.syncMetaStoreName, 'readwrite')
+    const store = await this.openStore(this.#syncMetaStoreName, 'readwrite')
     await store.put(value, key)
   }
 
@@ -414,7 +413,7 @@ export default class Backinfront {
    */
   async #getAllFromSyncQueue () {
     const rows = []
-    const store = await this.openStore(this.syncQueueStoreName, 'readonly')
+    const store = await this.openStore(this.#syncQueueStoreName, 'readonly')
     let cursor = await store.index('createdAt').openCursor(null, 'prev')
     while (cursor) {
       rows.push(cursor.value)
@@ -427,7 +426,7 @@ export default class Backinfront {
    * Remove all itemms from the queue store owned by the lib
    */
   async #clearSyncQueue () {
-    const store = await this.openStore(this.syncQueueStoreName, 'readwrite')
+    const store = await this.openStore(this.#syncQueueStoreName, 'readwrite')
     await store.clear()
   }
 
@@ -438,7 +437,7 @@ export default class Backinfront {
    * @param {IDBTransaction} transaction
    */
   async addToSyncQueue (storeName, primaryKey, transaction) {
-    const store = await this.openStore(this.syncQueueStoreName, transaction)
+    const store = await this.openStore(this.#syncQueueStoreName, transaction)
     await store.add({
       id: generateUUID(),
       createdAt: (new Date()).toJSON(),
