@@ -763,8 +763,17 @@ export default class Backinfront {
     this.#syncInProgress = true
 
     try {
-      const syncQueueItems = await this.#getAllFromSyncQueue()
+      // Init lastChangeAt
+      let currentLastChangeAt = await this.#getMeta('lastChangeAt')
+      let nextLastChangeAt = null
+
+      if (!currentLastChangeAt) {
+        currentLastChangeAt = new Date()
+        nextLastChangeAt = currentLastChangeAt
+      }
+
       // Retrieve data to sync
+      const syncQueueItems = await this.#getAllFromSyncQueue()
       const clientDataToSync = await Promise.all(
         deduplicateArray(syncQueueItems, ['primaryKey','modelName'])
           .map(async ({ createdAt, modelName, primaryKey }) => ({
@@ -775,15 +784,6 @@ export default class Backinfront {
           }))
       )
 
-      // Init lastChangeAt
-      let currentLastChangeAt = await this.#getMeta('lastChangeAt')
-      let nextLastChangeAt = null
-
-      if (!currentLastChangeAt) {
-        currentLastChangeAt = new Date()
-        nextLastChangeAt = currentLastChangeAt
-      }
-
       // Send data to sync
       const serverDataToSync = await this.#fetch({
         method: 'POST',
@@ -791,7 +791,7 @@ export default class Backinfront {
         searchParams: {
           lastChangeAt: currentLastChangeAt
         },
-        data: clientDataToSync
+        body: clientDataToSync
       })
 
       // Sync data from server
