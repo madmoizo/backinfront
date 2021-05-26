@@ -4,7 +4,7 @@
  * @param {Array<string>} [uniqueKeys=[]]
  * @return {Array<object>}
  */
-export function deduplicateArray (arr, uniqueKeys = []) {
+export default function deduplicateArray (arr, uniqueKeys = []) {
   return arr
     .filter((value, index) => {
       return index === arr.findIndex(item => {
