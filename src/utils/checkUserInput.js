@@ -17,7 +17,7 @@ const typeMap = {
  * @param {string} errorPrefix
  */
 export default function checkUserInput (userInput, spec, errorPrefix='[error]') {
-  for (key in spec) {
+  for (const key in spec) {
     const paramSpec = spec[key]
 
     if (!(key in userInput) && paramSpec.required) {
