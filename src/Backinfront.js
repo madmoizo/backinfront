@@ -620,7 +620,7 @@ export default class Backinfront {
       result = await route.action(ctx, this.stores)
 
       // Progressive ehancement: commit not supported by safari (last check: 10/04/21)
-      ctx.transaction.commit?.()
+      ctx.transaction?.commit?.()
 
       this.onRouteActionSuccess({ route, result })
     } catch (error) {
