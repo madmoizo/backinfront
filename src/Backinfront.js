@@ -481,12 +481,12 @@ export default class Backinfront {
 
   /**
   * Fetch helper to build the request init param
-  * @param {object} data
+  * @param {object} body
   * @param {object} options
   * @param {object} options.method
   * @param {object} [options.bbody]
   */
-  async #buildRequestInit ({ method, data }) {
+  async #buildRequestInit ({ method, body }) {
     const requestInit = {
       method,
       mode: 'cors',
