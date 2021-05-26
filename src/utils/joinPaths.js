@@ -1,6 +1,7 @@
 /**
  * Join pathnames
- * @param {string} paths
+ * @param {...string} paths
+ * @return {string}
  */
 export default function joinPaths (...paths) {
   let fullpath = paths

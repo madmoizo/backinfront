@@ -1,7 +1,12 @@
-export default function objectToJson (object) {
+/**
+ * Transform Date to json date
+ * @param {object} obj
+ * @return {object}
+ */
+export default function objectToJson (obj) {
   const formattedData = {}
 
-  for (const key in object) {
+  for (const key in obj) {
     const value = data[key]
 
     if (isObject(value)) {

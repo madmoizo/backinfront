@@ -4,16 +4,71 @@ import normalizeForSearch from './utils/normalizeForSearch.js'
 
 export default class QueryLanguage {
   static #OPERATORS = {
+    /**
+     * @param {any} storeValue
+     * @param {any} value
+     * @return {boolean}
+     */
     $function: (storeValue, value) => value(storeValue),
+    /**
+     * @param {any} storeValue
+     * @param {any} value
+     * @return {boolean}
+     */
     $equal: (storeValue, value) => storeValue === value,
+    /**
+     * @param {any} storeValue
+     * @param {any} value
+     * @return {boolean}
+     */
     $notequal: (storeValue, value) => storeValue !== value,
+    /**
+     * @param {any} storeValue
+     * @param {any} value
+     * @return {boolean}
+     */
     $in: (storeValue, value) => value.includes(storeValue),
+    /**
+     * @param {any} storeValue
+     * @param {any} value
+     * @return {boolean}
+     */
     $notin: (storeValue, value) => !value.includes(storeValue),
+    /**
+     * @param {any} storeValue
+     * @param {any} value
+     * @return {boolean}
+     */
     $like: (storeValue, value) => normalizeForSearch(storeValue).includes(value),
+    /**
+     * @param {any} storeValue
+     * @param {any} value
+     * @return {boolean}
+     */
     $gt: (storeValue, value) => storeValue > value,
+    /**
+     * @param {any} storeValue
+     * @param {any} value
+     * @return {boolean}
+     */
     $gte: (storeValue, value) => storeValue >= value,
+    /**
+     * @param {any} storeValue
+     * @param {any} value
+     * @return {boolean}
+     */
     $lt: (storeValue, value) => storeValue < value,
+    /**
+     * @param {any} storeValue
+     * @param {any} value
+     * @return {boolean}
+     */
     $lte: (storeValue, value) => storeValue <= value,
+    /**
+     * @param {any} storeValue
+     * @param {any} value
+     * @return {boolean}
+     */
     $some: (storeValue, value) => storeValue && storeValue.some(item => item[value[0]] === value[1])
   }
 
@@ -21,7 +76,6 @@ export default class QueryLanguage {
   * Add a custom where operator
   * @param {string} operatorName - where clause
   * @param {function} operatorAction - item to compare the condition with
-  * @return {void}
   */
   static addOperator (operatorName, operatorAction) {
     if (!operatorName.startsWith('$') || operatorName.length === 1) {

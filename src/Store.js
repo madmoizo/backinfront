@@ -17,31 +17,31 @@ export default class Store {
   constructor (backinfront, options = {}) {
     this.#backinfront = backinfront
 
-    if (options.storeName) {
+    if ('storeName' in options) {
       this.storeName = options.storeName
     } else {
       throw new Error('[Backinfront] `storeName` is required')
     }
-    if (options.primaryKey) {
+    if ('primaryKey' in options) {
       this.primaryKey = options.primaryKey
     } else {
       throw new Error(`[Backinfront] \`primaryKey\` is required on store ${options.storeName}`)
     }
-    if (options.endpoint) {
+    if ('endpoint' in options) {
       this.endpoint = options.endpoint
     } else {
       throw new Error(`[Backinfront][router] \`endpoint\` is required`)
     }
 
-    if (options.indexes) {
+    if ('indexes' in options) {
       this.indexes = options.indexes
     }
-    if (options.beforeCreate) {
+    if ('beforeCreate' in options) {
       this.beforeCreate = options.beforeCreate
     }
 
     // Register manual routes
-    if (options.routes) {
+    if ('routes' in options) {
       const predefinedRoutes = {
         'create': {
           method: 'POST',
@@ -217,8 +217,8 @@ export default class Store {
         count += 1
 
         if (
-          (limit === null || rows.length < limit) &&
-          (offset === null || count > offset)
+          (limit === null || limit > rows.length) &&
+          (offset === null || offset < count)
         ) {
           rows.push(cursor.value)
         }

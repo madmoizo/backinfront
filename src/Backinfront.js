@@ -3,6 +3,7 @@ import { openDB, deleteDB } from 'idb'
 import QueryLanguage from './QueryLanguage.js'
 import Store from './Store.js'
 
+import checkUserInput from './utils/checkUserInput.js'
 import isDate from './utils/isDate.js'
 import isArray from './utils/isArray.js'
 import parseDate from './utils/parseDate.js'
@@ -29,33 +30,52 @@ export default class Backinfront {
   }
 
   #DB_OPERATIONS = {
-    'createStore': (transaction, { storeName, keyPath }) => {
+    /**
+     * @param {IDBTransaction} transaction
+     * @param {object} options
+     * @param {string} options.storeName
+     * @param {string} options.keyPath
+     */
+    createStore (transaction, { storeName, keyPath }) {
       if (keyPath) {
         transaction.db.createObjectStore(storeName, { keyPath: keyPath })
       } else {
         transaction.db.createObjectStore(storeName)
       }
     },
-    'deleteStore': (transaction, { storeName }) => {
+    /**
+     * @param {IDBTransaction} transaction
+     * @param {object} options
+     * @param {string} options.storeName
+     */
+    deleteStore (transaction, { storeName }) {
       transaction.db.deleteObjectStore(storeName)
     },
-    'createIndex': (transaction, { storeName, indexName, indexKeyPath }) => {
+    /**
+     * @param {IDBTransaction} transaction
+     * @param {object} options
+     * @param {string} options.storeName
+     * @param {string} options.indexName
+     * @param {string} options.indexKeyPath
+     */
+    createIndex (transaction, { storeName, indexName, indexKeyPath }) {
       transaction.objectStore(storeName).createIndex(indexName, indexKeyPath)
     },
-    'deleteIndex': (transaction, { storeName, indexName }) => {
+    /**
+     * @param {IDBTransaction} transaction
+     * @param {object} options
+     * @param {string} options.storeName
+     * @param {string} options.indexName
+     */
+    deleteIndex (transaction, { storeName, indexName }) {
       transaction.objectStore(storeName).deleteIndex(indexName)
     }
   }
 
   #syncInProgress = false
-  databaseConfigurationStarted = false
-  databaseConfigurationEnded = false
-  routes = []
-  stores = {}
-  syncMetaStoreName = '__Meta'
-  syncQueueStoreName = '__SyncQueue'
-  databaseVersion = null
-  databaseSchema = {
+  #databaseConfigurationStarted = false
+  #databaseConfigurationEnded = false
+  #databaseSchema = {
     [this.syncMetaStoreName]: {
       keyPath: null
     },
@@ -66,6 +86,11 @@ export default class Backinfront {
       }
     }
   }
+  routes = []
+  stores = {}
+  syncMetaStoreName = '__Meta'
+  syncQueueStoreName = '__SyncQueue'
+
   authToken = () => null
   routeState = () => null
   formatRouteSearchParam = (value) => value
@@ -79,64 +104,85 @@ export default class Backinfront {
   formatDataBeforeSave = (data) => objectToJson(data)
 
   /**
-  * Configuration
+  * @constructor
   * @param {object} options
+  * @param {string} options.databaseName
+  * @param {Array<object>} options.stores - list of store's configurations
+  * @param {string} options.baseUrl - base url used for populate & sync
+  * @param {function} options.authToken - must return a JWT to authenticate populate & sync requests
+  * @param {string} options.populateEndpoint - part of url corresponding to the populate endpoint
+  * @param {string} [options.syncEndpoint] - part of url corresponding to the sync endpoint
+  * @param {function} [options.routeState] - must return an object with data available on every offline handled requests
+  * @param {function} [options.formatBeforeSave] - format data before insertion into indexeddb
+  * @param {function} [options.formatRouteSearchParam] - format Request's search params (example: transform comma separated string into array)
+  * @param {function} [options.formatRoutePathParam] - format Route's customs params
+  * @param {function} [options.onRouteActionSuccess]
+  * @param {function} [options.onRouteActionError]
+  * @param {function} [options.onPopulateSuccess]
+  * @param {function} [options.onPopulateError]
+  * @param {function} [options.onSyncSuccess]
+  * @param {function} [options.onSyncError]
   */
   constructor (options = {}) {
-    if (options.databaseName) {
-      this.databaseName = options.databaseName
-    } else {
-      throw new Error('[Backinfront] `databaseName` is required')
-    }
-    if (options.baseUrl) {
-      this.baseUrl = options.baseUrl
-    } else {
-      throw new Error('[Backinfront] `baseUrl` is required')
-    }
-    if (options.syncEndpoint) {
-      this.syncEndpoint = options.syncEndpoint
-    } else {
-      throw new Error('[Backinfront] `syncEndpoint` is required')
-    }
-    if (options.populateEndpoint) {
-      this.populateEndpoint = options.populateEndpoint
-    } else {
-      throw new Error('[Backinfront] `populateEndpoint` is required')
-    }
-    if (options.formatBeforeSave) {
-      this.formatBeforeSave = options.formatBeforeSave
-    }
-    if (options.authToken) {
+    // Throw an error if user input does not match the spec
+    checkUserInput(options, {
+      databaseName: { type: 'string', required: true },
+      stores: { type: 'array', required: true },
+      baseUrl: { type: 'string', required: true },
+      syncEndpoint: { type: 'string', required: true },
+      populateEndpoint: { type: 'string', required: true },
+      authToken: { type: 'function' },
+      routeState: { type: 'function' },
+      formatBeforeSave: { type: 'function' },
+      formatRouteSearchParam: { type: 'function' },
+      formatRoutePathParam: { type: 'function' },
+      onRouteActionSuccess: { type: 'function' },
+      onRouteActionError: { type: 'function' },
+      onPopulateSuccess: { type: 'function' },
+      onPopulateError: { type: 'function' },
+      onSyncSuccess: { type: 'function' },
+      onSyncError: { type: 'function' }
+    }, '[Backinfront]')
+
+    // Required params
+    this.databaseName = options.databaseName
+    this.baseUrl = options.baseUrl
+    this.syncEndpoint = options.syncEndpoint
+    this.populateEndpoint = options.populateEndpoint
+    this.addStores(options.stores)
+    // Optional params
+    if ('authToken' in options) {
       this.authToken = options.authToken
     }
-    if (options.routeState) {
+    if ('routeState' in options) {
       this.routeState = options.routeState
     }
-    if (options.formatRouteSearchParam) {
+    if ('formatBeforeSave' in options) {
+      this.formatBeforeSave = options.formatBeforeSave
+    }
+    if ('formatRouteSearchParam' in options) {
       this.formatRouteSearchParam = options.formatRouteSearchParam
     }
-    if (options.formatRoutePathParam) {
+    if ('formatRoutePathParam' in options) {
       this.formatRoutePathParam = options.formatRoutePathParam
     }
-    if (options.onRouteActionError) {
-      this.onRouteActionError = options.onRouteActionError
-    }
-    if (options.onRouteActionSuccess) {
+    if ('onRouteActionSuccess' in options) {
       this.onRouteActionSuccess = options.onRouteActionSuccess
     }
-    if (options.onPopulateSuccess) {
+    if ('onRouteActionError' in options) {
+      this.onRouteActionError = options.onRouteActionError
+    }
+    if ('onPopulateSuccess' in options) {
       this.onPopulateSuccess = options.onPopulateSuccess
     }
-    if (options.onSyncSuccess) {
+    if ('onPopulateError' in options) {
+      this.onPopulateError = options.onPopulateError
+    }
+    if ('onSyncSuccess' in options) {
       this.onSyncSuccess = options.onSyncSuccess
     }
-    if (options.onSyncError) {
+    if ('onSyncError' in options) {
       this.onSyncError = options.onSyncError
-    }
-
-    // Stores processing
-    if (options.stores) {
-      this.addStores(options.stores)
     }
 
     // Handle routes
@@ -162,7 +208,7 @@ export default class Backinfront {
    */
   async #configureDatabase () {
     const databaseMigrations = []
-    const databaseSchemaNew = this.databaseSchema
+    const databaseSchemaNew = this.#databaseSchema
 
     // Parse the current database schema
     const databaseSchemaOld = {}
@@ -288,13 +334,13 @@ export default class Backinfront {
    */
   async #databaseReady () {
     // Configure database only on the very first call
-    if (!this.databaseConfigurationStarted) {
-      this.databaseConfigurationStarted = true
+    if (!this.#databaseConfigurationStarted) {
+      this.#databaseConfigurationStarted = true
       await this.#configureDatabase()
-      this.databaseConfigurationEnded = true
+      this.#databaseConfigurationEnded = true
     }
 
-    return waitUntil(() => this.databaseConfigurationEnded, {
+    return waitUntil(() => this.#databaseConfigurationEnded, {
       timeout: 10000,
       interval: 20,
       rejectMessage: '[Backinfront] An error occured during database migration',
@@ -303,18 +349,18 @@ export default class Backinfront {
 
   /**
   * Delete the database
-  * Can be useful to clean a user profile on logout for example
+  * @example Can be useful to clean a user profile on logout for example
   */
   async deleteDatabase () {
     await deleteDB(this.databaseName)
-    this.databaseConfigurationStarted = false
-    this.databaseConfigurationEnded = false
+    this.#databaseConfigurationStarted = false
+    this.#databaseConfigurationEnded = false
   }
 
   /**
    * Get a transaction
-   * @param  {} mode
-   * @param  {} storeNames=null
+   * @param  {'readonly'|'readwrite'} mode
+   * @param  {Array<string>} [storeNames=null]
    */
   async getTransaction (mode, storeNames = null) {
     await this.#databaseReady()
@@ -328,10 +374,10 @@ export default class Backinfront {
   }
 
   /**
-   * Open the store
-   * @param  {} storeName
-   * @param  {} mode
-   * @param  {} transaction=null
+   * Open a store
+   * @param  {string} storeName
+   * @param  {'readonly'|'readwrite'} mode
+   * @param  {IDBTransaction} [transaction=null]
    */
   async openStore (storeName, mode, transaction = null) {
     transaction = transaction || await this.getTransaction(mode, storeName)
@@ -356,7 +402,7 @@ export default class Backinfront {
   /**
    * Set a value from the key-value store owned by the lib
    * @param {string} key
-   * @param {string} value
+   * @param {any} value
    */
   async #setMeta (key, value) {
     const store = await this.openStore(this.syncMetaStoreName, 'readwrite')
@@ -408,6 +454,9 @@ export default class Backinfront {
   /**
   * Fetch helper to build the request url
   * @param {object} options
+  * @param {string} options.pathname
+  * @param {object} [options.searchParams]
+  * @return {string}
   */
   #buildRequestUrl ({ pathname, searchParams }) {
     let requestUrl = joinPaths(this.baseUrl, pathname)
@@ -435,14 +484,16 @@ export default class Backinfront {
   * Fetch helper to build the request init param
   * @param {object} data
   * @param {object} options
+  * @param {object} options.method
+  * @param {object} [options.bbody]
   */
-  async #buildRequestInit (data = null, options = {}) {
+  async #buildRequestInit ({ method, data }) {
     const requestInit = {
+      method,
       mode: 'cors',
       headers: {
         'Content-Type': 'application/json'
-      },
-      ...options
+      }
     }
 
     // Set Authorization header for private api
@@ -455,9 +506,9 @@ export default class Backinfront {
     // Set body
     if (
       ['POST', 'PUT', 'PATCH'].includes(requestInit.method) &&
-      data
+      body
     ) {
-      requestInit.body = JSON.stringify(data)
+      requestInit.body = JSON.stringify(body)
     }
 
     return requestInit
@@ -466,10 +517,15 @@ export default class Backinfront {
   /**
   * Fetch online data
   * @param {object} options
+  * @param {string} options.method
+  * @param {string} options.pathname
+  * @param {object} [options.searchParams]
+  * @param {object} [options.body]
+  * @return {object}
   */
-  async #fetch (options = {}) {
-    const requestUrl = this.#buildRequestUrl(options)
-    const requestInit = await this.#buildRequestInit(options.data, { method: options.method })
+  async #fetch ({ method, pathname, searchParams, body }) {
+    const requestUrl = this.#buildRequestUrl({ pathname, searchParams })
+    const requestInit = await this.#buildRequestInit({ method, body })
 
     const fetchRequest = new Request(requestUrl, requestInit)
     let fetchResponse
@@ -496,6 +552,7 @@ export default class Backinfront {
   /**
   * Find a route in the global list
   * @param {Request} request
+  * @return {object}
   */
   #findRouteFromRequest (request) {
     const urlToTest = getUrlPath(new URL(request.url))
@@ -513,7 +570,7 @@ export default class Backinfront {
   * Route handler inside service worker fetch
   * @param {object} route
   * @param {Request} request
-  * @returns {Response}
+  * @return {Response}
   */
   async #getRouteResponse (route, request) {
     const ctx = {
@@ -588,7 +645,8 @@ export default class Backinfront {
 
   /**
   * Add multiple store interfaces in a single call
-  * @param {object} storeParams
+  * @param {Array<object>} storesParams
+  * @return {Array<object>}
   */
   addStores (storesParams) {
     const stores = []
@@ -602,11 +660,12 @@ export default class Backinfront {
   /**
   * Add a store interface with its routes
   * @param {object} storeParams
+  * @return {object}
   */
   addStore (storeParams) {
     const store = new Store(this, storeParams)
     this.stores[store.storeName] = store
-    this.databaseSchema[store.storeName] = {
+    this.#databaseSchema[store.storeName] = {
       keyPath: store.primaryKey,
       indexes: store.indexes
     }
@@ -633,7 +692,6 @@ export default class Backinfront {
   * Add a custom where operator
   * @param {string} operatorName - where clause
   * @param {function} operatorAction - item to compare the condition with
-  * @return {void}
   */
   addQueryOperator (operatorName, operatorAction) {
     QueryLanguage.addOperator(operatorName, operatorAction)
@@ -646,12 +704,14 @@ export default class Backinfront {
 
   /**
   * Fill the database with initial data
-  * @param {object} filterOptions
+  * @param {object} options
+  * @param {object} [options.include]
+  * @param {object} [options.exclude]
   */
-  async populate (filterOptions) {
+  async populate ({ include, exclude }) {
     // Process filter options
-    const storesToInclude = filterOptions.include || []
-    const storesToExclude = filterOptions.exclude || []
+    const storesToInclude = include || []
+    const storesToExclude = exclude || []
     const storeNames = Object.entries(this.stores)
       .filter(([storeName, value]) => {
         if (storesToExclude.includes(storeName)) {

@@ -1,6 +1,6 @@
 /**
  * Convert an array of object to an object with an object property as key
- * @param {array} arr
+ * @param {Array<object>} arr
  * @param {string} key
  * @return {object} hastable using key's value as identifier for each object of the arr
  */

@@ -1,7 +1,7 @@
 /**
  * Normalize a string (unaccent & lowercase)
  * @param {string} str
- * @return {string} sanitized string
+ * @return {string}
  */
 export default function normalizeForSearch (str) {
   return str

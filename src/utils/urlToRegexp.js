@@ -3,7 +3,8 @@ import getUrlPath from './getUrlPath.js'
 
 /**
  * Convert url string to regexp
- * @param {String} urlString
+ * @param {string} urlString
+ * @return {object}
  */
 export default function urlToRegexp (urlString) {
   const url = new URL(urlString)
