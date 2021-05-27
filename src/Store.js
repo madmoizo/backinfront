@@ -3,6 +3,7 @@ import QueryLanguage from './QueryLanguage.js'
 import isObject from './utils/isObject.js'
 import isArray from './utils/isArray.js'
 import arrayToObject from './utils/arrayToObject.js'
+import checkUserInput from './utils/checkUserInput.js'
 
 
 export default class Store {
@@ -15,23 +16,20 @@ export default class Store {
   beforeCreate = (data) => null
 
   constructor (backinfront, options = {}) {
-    this.#backinfront = backinfront
+    // Throw an error if user input does not match the spec
+    checkUserInput(options, {
+      storeName: { type: 'string', required: true },
+      primaryKey: { type: 'string', required: true },
+      indexes: { type: 'object' },
+      endpoint: { type: 'string', required: true },
+      routes: { type: 'array' },
+      beforeCreate: { type: 'function' }
+    }, `[Backinfront][Store:${options.storeName}]`)
 
-    if ('storeName' in options) {
-      this.storeName = options.storeName
-    } else {
-      throw new Error('[Backinfront] `storeName` is required')
-    }
-    if ('primaryKey' in options) {
-      this.primaryKey = options.primaryKey
-    } else {
-      throw new Error(`[Backinfront] \`primaryKey\` is required on store ${options.storeName}`)
-    }
-    if ('endpoint' in options) {
-      this.endpoint = options.endpoint
-    } else {
-      throw new Error(`[Backinfront][router] \`endpoint\` is required`)
-    }
+    this.#backinfront = backinfront
+    this.storeName = options.storeName
+    this.primaryKey = options.primaryKey
+    this.endpoint = options.endpoint
 
     if ('indexes' in options) {
       this.indexes = options.indexes
