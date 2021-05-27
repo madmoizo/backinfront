@@ -1,12 +1,14 @@
 import isString from './isString.js'
 import isFunction from './isFunction.js'
 import isArray from './isArray.js'
+import isObject from './isObject.js'
 
 
 const typeMap = {
-  string: isString,
   array: isArray,
-  function: isFunction
+  function: isFunction,
+  object: isObject,
+  string: isString
 }
 
 
