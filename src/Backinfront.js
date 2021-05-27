@@ -12,7 +12,7 @@ import getUrlPath from './utils/getUrlPath.js'
 import joinPaths from './utils/joinPaths.js'
 import generateUUID from './utils/generateUUID.js'
 import urlToRegexp from './utils/urlToRegexp.js'
-import objectToJson from './utils/objectToJson.js'
+import dateToJson from './utils/dateToJson.js'
 import waitUntil from './utils/waitUntil.js'
 import deduplicateArray from './utils/deduplicateArray.js'
 
@@ -100,7 +100,7 @@ export default class Backinfront {
   onPopulateError = () => null
   onSyncSuccess = () => null
   onSyncError = () => null
-  formatDataBeforeSave = (data) => objectToJson(data)
+  formatDataBeforeSave = (data) => dateToJson(data)
 
   /**
   * @constructor
@@ -625,9 +625,7 @@ export default class Backinfront {
     } catch (error) {
       errorCode = 'ACTION_ERROR'
 
-      if (ctx.transaction) {
-        ctx.transaction.abort()
-      }
+      ctx.transaction?.abort()
 
       this.onRouteActionError({ route, error })
     }

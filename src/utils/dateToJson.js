@@ -3,14 +3,14 @@
  * @param {object} obj
  * @return {object}
  */
-export default function objectToJson (obj) {
+export default function dateToJson (obj) {
   const formattedData = {}
 
   for (const key in obj) {
-    const value = data[key]
+    const value = obj[key]
 
     if (isObject(value)) {
-      formattedData[key] = objectToJson(value)
+      formattedData[key] = dateToJson(value)
     } else if (value instanceof Date) {
       formattedData[key] = value.toJSON()
     } else {
