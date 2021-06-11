@@ -11,7 +11,6 @@ import isAfterDate from './utils/isAfterDate.js'
 import getUrlPath from './utils/getUrlPath.js'
 import joinPaths from './utils/joinPaths.js'
 import generateUUID from './utils/generateUUID.js'
-import urlToRegexp from './utils/urlToRegexp.js'
 import waitUntil from './utils/waitUntil.js'
 import deduplicateArray from './utils/deduplicateArray.js'
 
@@ -661,23 +660,16 @@ export default class Backinfront {
   addStore (storeParams) {
     const store = new Store(this, storeParams)
     this.stores[store.storeName] = store
-    this.#databaseSchema[store.storeName] = {
-      keyPath: store.primaryKey,
-      indexes: store.indexes
+    this.#databaseSchema[store.storeName] = {}
+    if (store.primaryKey) {
+      this.#databaseSchema[store.storeName].keyPath = store.primaryKey
+    }
+    if (store.indexes) {
+      this.#databaseSchema[store.storeName].indexes = store.indexes
     }
 
     // Routes
-    for (const route of store.routes) {
-      const urlString = joinPaths(this.baseUrl, store.endpoint, route.pathname)
-      const routeRegexp = urlToRegexp(urlString)
-
-      this.routes.push({
-        specificity: (route.pathname.split('/').length * 2) - routeRegexp.pathParams.length,
-        ...routeRegexp,
-        ...route
-      })
-    }
-
+    this.routes.push(...store.routes)
     // Routes must be ordered by specificity
     this.routes.sort((a, b) => b.specificity - a.specificity)
 

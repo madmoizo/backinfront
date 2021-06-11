@@ -4,6 +4,8 @@ import isObject from './utils/isObject.js'
 import isArray from './utils/isArray.js'
 import arrayToObject from './utils/arrayToObject.js'
 import checkUserInput from './utils/checkUserInput.js'
+import urlToRegexp from './utils/urlToRegexp.js'
+import joinPaths from './utils/joinPaths.js'
 
 
 export default class Store {
@@ -88,11 +90,17 @@ export default class Store {
   * @param {function} action
   */
   addRoute ({ method, pathname, action }) {
+    const urlString = joinPaths(this.#backinfront.baseUrl, this.endpoint, pathname)
+    const routeRegexp = urlToRegexp(urlString)
+
     this.routes.push({
       method: method.toUpperCase(),
       pathname: pathname,
-      action: action
+      action: action,
+      specificity: (pathname.split('/').length * 2) - routeRegexp.pathParams.length,
+      ...routeRegexp,
     })
+    this.routes.sort((a, b) => b.specificity - a.specificity)
   }
 
   /*****************************************************************
