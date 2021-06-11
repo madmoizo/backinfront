@@ -18,7 +18,7 @@ const typeMap = {
  * @param {object} spec
  * @param {string} errorPrefix
  */
-export default function checkUserInput (userInput, spec, errorPrefix='[error]') {
+export default function checkUserInput (userInput, spec, errorPrefix='[Error]') {
   for (const key in spec) {
     const paramSpec = spec[key]
 
