@@ -77,7 +77,7 @@ Backinfront accept a range of options which are described below
 
 ### authToken()
 
-- Description: Provide a JWT to autheticate requests on the server
+- Description: Provide a JWT to authenticate requests on the server
 - Type: `function`
 - params: none
 - return: `string`
