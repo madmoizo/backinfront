@@ -4,18 +4,18 @@
 
 # Backinfront
 
-1. [What is this useful for ?](#useful)
-1. [Changes](#changes)
-1. [Installation](#installation)
-1. [Browser support](#browser-support)
-1. [API](#api)
+1. [What is this useful for ?](#what-is-this-useful-for)
+2. [Changes](#changes)
+3. [Browser support](#browser-support)
+4. [Installation](#installation)
+5. [API](#api)
    1. [`new Backinfront(options)`](#new-backinfrontoptions)
    1. [`backinfront.populate(storeNames)`](#backinfrontpopulatestoreNames)
    1. [`backinfront.sync()`](#backinfrontsync)
    1. [`backinfront.destroy()`](#backinfrontdestroy)
    1. [`Store object`](#storeobject)
    1. [`Route object`](#routeobject)
-1. [Example](#example)
+6. [Example](#example)
 
 
 # What is this useful for ?
