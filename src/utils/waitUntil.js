@@ -8,9 +8,9 @@
  * @param {function} [options.onReject]
  */
 export default function waitUntil (resolveCondition, { timeout, interval, rejectMessage, onReject }) {
-  timeout = timeout || 30000
-  interval = interval || 50
-  rejectMessage = rejectMessage || 'waitUntil: timeout'
+  timeout ??= 30000
+  interval ??= 50
+  rejectMessage ??= 'waitUntil: timeout'
 
   return new Promise((resolve, reject) => {
     // Resolve immediately if the condition is already verified
