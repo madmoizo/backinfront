@@ -24,7 +24,7 @@ Backinfront is both the manager of your local database and a router which handle
 
 # Changes
 
-[See details of changes](CHANGES.md).
+[See details of changes](CHANGELOG.md).
 
 # Browser support
 
