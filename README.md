@@ -4,7 +4,7 @@
 
 # Backinfront
 
-1. [What is this useful for ?](#what-is-this-useful-for)
+1. [What is this useful for ?](#what-is-this-useful-for-)
 2. [Changes](#changes)
 3. [Browser support](#browser-support)
 4. [Installation](#installation)
@@ -13,8 +13,8 @@
    1. [`backinfront.populate(storeNames)`](#backinfrontpopulatestoreNames)
    1. [`backinfront.sync()`](#backinfrontsync)
    1. [`backinfront.destroy()`](#backinfrontdestroy)
-   1. [`Store object`](#storeobject)
-   1. [`Route object`](#routeobject)
+   1. [`Store object`](#store-object)
+   1. [`Route object`](#route-object)
 6. [Example](#example)
 
 
@@ -253,7 +253,7 @@ indexes: {
 
 ### routes
 
-- Description: List of routes handled offline (see [Route Object](#routeobject) for more details)
+- Description: List of routes handled offline (see [Route Object](#route-object) for more details)
 - Type: `Array<Route>`
 
 ## Route object
