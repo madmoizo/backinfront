@@ -1,2 +1,2 @@
-import './config/backinfront.config.js'
+import './config/backinfront.js'
 import './config/messaging.js'
