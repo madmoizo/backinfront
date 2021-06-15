@@ -284,4 +284,4 @@ A Route object observe the following structure
 
 # Example
 
-What is better than [a real example](/example/README.md) to show the full capabilities of Backinfront?
+What is better than [a real example](/example) to show the full capabilities of Backinfront?
