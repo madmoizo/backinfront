@@ -262,7 +262,7 @@ A Route object observe the following structure
 
 1. [method](#method)
 1. [pathname](#pathname)
-1. [action (ctx, stores)](#action-ctx-stores)
+1. [action(ctx,stores)](#actionctxstores)
 
 ### method
 
@@ -274,13 +274,13 @@ A Route object observe the following structure
 - Description: Part of the url after the [endpoint](#endpoint). You can specify `pathParams` by prefixing part of the url with `:`
 - Type: `string`
 
-### action
+### action(ctx,stores)
 
 - Description: action to perform
 - Type: `function`
 - params:
    - ctx: `{ state, request, searchParams, pathParams, body, transaction }`
-   - stores: object containing all stores with [storeName](#storename) as a key
+   - stores: object containing all stores with [storeName](#storename) as a key `{ Store1, Store2, Store10 }`
 
 # Example
 
