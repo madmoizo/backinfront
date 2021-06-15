@@ -267,7 +267,7 @@ A Route object observe the following structure
 ### method
 
 - Description: method of the request
-- Type: `GET | POST | PATCH | DELETE`
+- Type: `GET | PUT | POST | PATCH | DELETE`
 
 ### pathname
 
