@@ -110,7 +110,7 @@ export default class Backinfront {
   * @param {string} options.populateEndpoint - part of url corresponding to the populate endpoint
   * @param {string} [options.syncEndpoint] - part of url corresponding to the sync endpoint
   * @param {function} [options.routeState] - must return an object with data available on every offline handled requests
-  * @param {function} [options.formatBeforeSave] - format data before insertion into indexeddb
+  * @param {function} [options.formatDataBeforeSave] - format data before insertion into indexeddb
   * @param {function} [options.formatRouteSearchParam] - format Request's search params (example: transform comma separated string into array)
   * @param {function} [options.formatRoutePathParam] - format Route's customs params
   * @param {function} [options.onRouteActionSuccess]
@@ -130,7 +130,7 @@ export default class Backinfront {
       populateEndpoint: { type: 'string', required: true },
       authToken: { type: 'function' },
       routeState: { type: 'function' },
-      formatBeforeSave: { type: 'function' },
+      formatDataBeforeSave: { type: 'function' },
       formatRouteSearchParam: { type: 'function' },
       formatRoutePathParam: { type: 'function' },
       onRouteActionSuccess: { type: 'function' },
@@ -154,8 +154,8 @@ export default class Backinfront {
     if ('routeState' in options) {
       this.routeState = options.routeState
     }
-    if ('formatBeforeSave' in options) {
-      this.formatBeforeSave = options.formatBeforeSave
+    if ('formatDataBeforeSave' in options) {
+      this.formatDataBeforeSave = options.formatDataBeforeSave
     }
     if ('formatRouteSearchParam' in options) {
       this.formatRouteSearchParam = options.formatRouteSearchParam
@@ -348,7 +348,7 @@ export default class Backinfront {
   * Delete the database
   * @example Can be useful to clean a user profile on logout for example
   */
-  async deleteDatabase () {
+  async destroy () {
     await deleteDB(this.databaseName)
     this.#databaseConfigurationStarted = false
     this.#databaseConfigurationEnded = false
@@ -377,7 +377,7 @@ export default class Backinfront {
    * @param  {IDBTransaction} [transaction=null]
    */
   async openStore (storeName, mode, transaction = null) {
-    transaction = transaction || await this.getTransaction(mode, storeName)
+    transaction ??= await this.getTransaction(mode, storeName)
     const store = transaction.objectStore(storeName)
     return store
   }
@@ -692,24 +692,12 @@ export default class Backinfront {
 
   /**
   * Fill the database with initial data
-  * @param {object} options
-  * @param {object} [options.include]
-  * @param {object} [options.exclude]
+  * @param {array} storesToInclude
   */
-  async populate ({ include, exclude }) {
+  async populate (storesToInclude = []) {
     // Process filter options
-    const storesToInclude = include || []
-    const storesToExclude = exclude || []
     const storeNames = Object.entries(this.stores)
-      .filter(([storeName, value]) => {
-        if (storesToExclude.includes(storeName)) {
-          return false
-        }
-        if (storesToInclude.length === 0) {
-          return true
-        }
-        return storesToInclude.includes(storeName)
-      })
+      .filter(([storeName, store]) => storesToInclude.includes(storeName))
       .map(([storeName, store]) => storeName)
 
     try {
