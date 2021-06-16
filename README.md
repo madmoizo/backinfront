@@ -20,7 +20,7 @@
 
 # What is this useful for ?
 
-Backinfront is both the manager of your local database and a router which handle all defined requests locally. If you are building an offline first PWA who need sync capabilities, Backinfront is probably the tool your are looking for.
+Backinfront is both the manager of your local database and a router which handles all defined requests locally. If you are building an offline first PWA which needs sync capabilities, Backinfront is probably the tool your are looking for.
 
 # Changes
 
@@ -44,7 +44,7 @@ npm install backinfront
 
 ## new Backinfront(options)
 
-Backinfront accept a range of options which are described below
+Backinfront accepts a range of options described below
 
 1. [databaseName](#databasename)
 1. [stores](#stores)
@@ -77,7 +77,7 @@ Backinfront accept a range of options which are described below
 
 ### authToken()
 
-- Description: Provide a JWT to authenticate requests on the server
+- Description: Provides a JWT to authenticate requests on the server
 - Type: `function`
 - params: none
 - return: `string`
@@ -90,12 +90,12 @@ Backinfront accept a range of options which are described below
 
 ### populateEndpoint
 
-- Description: Part of url corresponding to the endpoint used for database population
+- Description: Part of the url corresponding to the endpoint used for database population
 - Type: `string`
 
 ### syncEndpoint
 
-- Description: Part of url corresponding to the endpoint used for database synchronization
+- Description: Part of the url corresponding to the endpoint used for database synchronization
 - Type: `string`
 
 ### routeState(request)
@@ -108,7 +108,7 @@ Backinfront accept a range of options which are described below
 
 ### formatDataBeforeSave(data)
 
-- Description: Format data just before the insertion
+- Description: Formats data just before the insertion
 - Type: `function`
 - params:
   - `data`: object
@@ -183,7 +183,7 @@ Backinfront accept a range of options which are described below
 
 ## backinfront.populate(storeNames)
 
-`populate` send a `GET` request to the [`populateEndpoint`](#populateendpoint) with a `modelNames` search param which contains the list of models you want to populate.
+`populate` sends a `GET` request to the [`populateEndpoint`](#populateendpoint) with a `modelNames` search param which contains the list of models you want to populate.
 The server must return an object which match the structure below:
 ```js
 {
@@ -196,7 +196,7 @@ For performance purpose, don't call `populateDB` with the full list of stores bu
 
 ## backinfront.sync()
 
-`sync` send a `POST` request to the [`syncEndpoint`](#syncendpoint).
+`sync` sends a `POST` request to the [`syncEndpoint`](#syncendpoint).
 The `body` is an `array` of `objects` with the following structure:
 ```js
 {
