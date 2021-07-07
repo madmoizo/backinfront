@@ -373,11 +373,12 @@ export default class Backinfront {
   /**
    * Open a store
    * @param  {string} storeName
-   * @param  {'readonly'|'readwrite'} mode
-   * @param  {IDBTransaction} [transaction=null]
+   * @param  {IDBTransaction|'readonly'|'readwrite'} mode
    */
-  async openStore (storeName, mode, transaction = null) {
-    transaction ??= await this.getTransaction(mode, storeName)
+  async openStore (storeName, mode) {
+    const transaction = isString(mode)
+      ? await this.getTransaction(mode, storeName)
+      : mode
     const store = transaction.objectStore(storeName)
     return store
   }
@@ -737,9 +738,9 @@ export default class Backinfront {
       return null
     }
 
-    this.#syncInProgress = true
-
     try {
+      this.#syncInProgress = true
+
       // Init lastChangeAt
       let currentLastChangeAt = await this.#getMeta('lastChangeAt')
       let nextLastChangeAt = null
@@ -775,7 +776,7 @@ export default class Backinfront {
       const transaction = await this.getTransaction('readwrite')
 
       for (const { createdAt, modelName, data } of serverDataToSync) {
-        const store = await this.openStore(modelName, 'readwrite', transaction)
+        const store = await this.openStore(modelName, transaction)
         await store.put(data)
 
         if (!nextLastChangeAt || isAfterDate(parseDate(createdAt), nextLastChangeAt)) {
@@ -796,8 +797,8 @@ export default class Backinfront {
       this.onSyncSuccess()
     } catch (error) {
       this.onSyncError({ error })
+    } finally {
+      this.#syncInProgress = false
     }
-
-    this.#syncInProgress = false
   }
 }
