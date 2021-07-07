@@ -333,7 +333,7 @@ export default class Store {
 
     const store = await this.#backinfront.openStore(this.storeName, transaction)
     // Check the consistency
-    if (this.primaryKey in data) {
+    if (!(this.primaryKey in data)) {
       throw new Error('[Backinfront][update] data param must include the primaryKey')
     }
     if (primaryKeyValue !== data[this.primaryKey]) {
