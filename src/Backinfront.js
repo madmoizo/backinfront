@@ -376,9 +376,9 @@ export default class Backinfront {
    * @param  {IDBTransaction|'readonly'|'readwrite'} mode
    */
   async openStore (storeName, mode) {
-    const transaction = isString(mode)
-      ? await this.getTransaction(mode, storeName)
-      : mode
+    const transaction = mode instanceof IDBTransaction
+      ? mode
+      : await this.getTransaction(mode, storeName)
     const store = transaction.objectStore(storeName)
     return store
   }
