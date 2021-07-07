@@ -176,7 +176,7 @@ export default class Store {
   * @param {IDBTransaction} transaction
   */
   async count (transaction = null) {
-    const store = await this.#backinfront.openStore(this.storeName, 'readonly', transaction)
+    const store = await this.#backinfront.openStore(this.storeName, transaction || 'readonly')
     const count = await store.count()
     return count
   }
@@ -264,7 +264,7 @@ export default class Store {
       return rows[0]
     }
 
-    const store = await this.#backinfront.openStore(this.storeName, 'readonly', transaction)
+    const store = await this.#backinfront.openStore(this.storeName, transaction || 'readonly')
     const row = await store.get(primaryKeyValue)
     return row
   }
@@ -274,7 +274,7 @@ export default class Store {
   * @param {IDBTransaction} transaction
   */
   async clear (transaction = null) {
-    const store = await this.#backinfront.openStore(this.storeName, 'readwrite', transaction)
+    const store = await this.#backinfront.openStore(this.storeName, transaction || 'readwrite')
     await store.clear()
   }
 
@@ -284,7 +284,7 @@ export default class Store {
   * @param {IDBTransaction} transaction
   */
   async destroy (primaryKeyValue, transaction = null) {
-    const store = await this.#backinfront.openStore(this.storeName, 'readwrite', transaction)
+    const store = await this.#backinfront.openStore(this.storeName, transaction || 'readwrite')
     await store.delete(primaryKeyValue)
   }
 
@@ -301,7 +301,7 @@ export default class Store {
       autocommit = true
     }
 
-    const store = await this.#backinfront.openStore(this.storeName, 'readwrite', transaction)
+    const store = await this.#backinfront.openStore(this.storeName, transaction)
     // Insert the new item
     this.beforeCreate(data)
     const formattedData = this.#backinfront.formatDataBeforeSave(data)
@@ -331,7 +331,7 @@ export default class Store {
       autocommit = true
     }
 
-    const store = await this.#backinfront.openStore(this.storeName, 'readwrite', transaction)
+    const store = await this.#backinfront.openStore(this.storeName, transaction)
     // Check the consistency
     if (this.primaryKey in data) {
       throw new Error('[Backinfront][update] data param must include the primaryKey')
