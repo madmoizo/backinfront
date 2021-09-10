@@ -362,7 +362,7 @@ export default class Backinfront {
   async getTransaction (mode, storeNames = null) {
     await this.#databaseReady()
     const db = await openDB(this.databaseName)
-    const transaction = db.transaction(storeNames || db.objectStoreNames, mode)
+    const transaction = db.transaction(storeNames || db.objectStoreNames, mode,  { durability: 'relaxed' })
     // The connection is not actually closed until all transactions
     // created using this connection are complete
     // https://developer.mozilla.org/en-US/docs/Web/API/IDBDatabase/close
