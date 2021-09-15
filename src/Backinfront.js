@@ -617,7 +617,7 @@ export default class Backinfront {
     try {
       result = await route.action(ctx, this.stores)
 
-      // Progressive ehancement: commit not supported by safari (last check: 10/04/21)
+      // Progressive ehancement: commit not supported by safari on iOS (last check: 15/09/21)
       ctx.transaction?.commit?.()
 
       this.onRouteActionSuccess({ route, result })
