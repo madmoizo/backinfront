@@ -54,7 +54,7 @@ export default class Store {
           method: 'GET',
           pathname: '/',
           action: async (ctx, stores) => {
-            return stores[this.storeName].findAndCountAll()
+            return stores[this.storeName].findManyAndCount()
           }
         },
         'retrieve': {
@@ -185,8 +185,8 @@ export default class Store {
   * Get all items and the count
   * @param {object} condition - list of filters (where, limit, offset, order)
   */
-  async findAndCountAll (condition = null) {
-    const store = await this.#backinfront.openStore(this.storeName, 'readonly')
+  async findManyAndCount (condition = null, transaction = null) {
+    const store = await this.#backinfront.openStore(this.storeName, transaction || 'readonly')
 
     if (!condition) {
       const rows = await store.getAll()
@@ -244,8 +244,8 @@ export default class Store {
   * @param {object} condition - list of filters (where, limit, offset, order)
   * @return {array}
   */
-  async findAll (condition = null) {
-    const { rows } = await this.findAndCountAll(condition)
+  async findMany (condition = null, transaction = null) {
+    const { rows } = await this.findManyAndCount(condition, transaction)
     return rows
   }
 
@@ -257,7 +257,7 @@ export default class Store {
   async findOne (primaryKeyValue, transaction = null) {
     // primaryKey is a condition if it's an object
     if (isObject(primaryKeyValue)) {
-      const rows = await this.findAll(primaryKeyValue)
+      const rows = await this.findMany(primaryKeyValue, transaction)
       if (rows.length > 1) {
         throw new Error(`[Backinfront][findOne] Expecting one result, ${rows.length} found`)
       }
