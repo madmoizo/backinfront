@@ -50,7 +50,7 @@ export default {
           order = ['lastName,firstName', 'ASC']
         }
 
-        return Contact.findAndCountAll({
+        return Contact.findManyAndCount({
           where: where,
           offset: offset,
           limit: limit,

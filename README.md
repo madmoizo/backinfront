@@ -279,8 +279,8 @@ A Route object observe the following structure
 - Description: action to perform
 - Type: `function`
 - params:
-   - ctx: `{ state, request, searchParams, pathParams, body, transaction }`
-   - stores: object containing all stores with [storeName](#storename) as a key `{ Store1, Store2, Store10 }`
+  - ctx: `{ state, request, searchParams, pathParams, body, transaction }`
+  - stores: object containing all stores with [storeName](#storename) as a key `{ Store1, Store2, Store10 }`
 
 # Example
 

@@ -17,6 +17,10 @@ export default class Store {
   routes = []
   beforeCreate = (data) => null
 
+  /**
+  * @param {object} backinfront
+  * @param {object} options
+  */
   constructor (backinfront, options = {}) {
     // Throw an error if user input does not match the spec
     checkUserInput(options, {
@@ -40,7 +44,6 @@ export default class Store {
       this.beforeCreate = options.beforeCreate
     }
 
-    // Register manual routes
     if ('routes' in options) {
       const predefinedRoutes = {
         'create': {
@@ -53,15 +56,15 @@ export default class Store {
         'list': {
           method: 'GET',
           pathname: '/',
-          action: async (ctx, stores) => {
-            return stores[this.storeName].findManyAndCount()
+          action: async ({ transaction }, stores) => {
+            return stores[this.storeName].findManyAndCount(null, transaction)
           }
         },
         'retrieve': {
           method: 'GET',
           pathname: '/:primaryKey',
-          action: async ({ pathParams }, stores) => {
-            return stores[this.storeName].findOne(pathParams.primaryKey)
+          action: async ({ pathParams, transaction }, stores) => {
+            return stores[this.storeName].findOne(pathParams.primaryKey, transaction)
           }
         },
         'update': {
@@ -76,7 +79,7 @@ export default class Store {
       for (const route of options.routes) {
         if (isObject(route)) {
           this.addRoute(route)
-        } else {
+        } else if (route in predefinedRoutes) {
           this.addRoute(predefinedRoutes[route])
         }
       }
@@ -85,9 +88,10 @@ export default class Store {
 
   /**
   * Add a route to the global list
-  * @param {string} method
-  * @param {string} pathname
-  * @param {function} action
+  * @param {object} routeParams
+  * @param {string} routeParams.method
+  * @param {string} routeParams.pathname
+  * @param {function} routeParams.action
   */
   addRoute ({ method, pathname, action }) {
     const urlString = joinPaths(this.#backinfront.baseUrl, this.endpoint, pathname)
@@ -109,8 +113,9 @@ export default class Store {
 
   /**
   * Compare 2 arrays: remove old items, update existing items, create new items
-  * @param {array} currentData
-  * @param {array} newData
+  * @param {Array<object>} currentData
+  * @param {Array<object>} newData
+  * @return {Array<object>}
   */
   #updateArray (currentData, newData) {
     // TODO: find a way to not hardcode primary key 'id' (will require the store schema)
@@ -131,6 +136,7 @@ export default class Store {
   * Compare object properties recusively and return a new object
   * @param {object} currentData
   * @param {object} newData
+  * @return {object}
   */
   #updateObject (currentData, newData) {
     const updatedData = {}
@@ -174,6 +180,7 @@ export default class Store {
   /**
   * Count all items in the store
   * @param {IDBTransaction} transaction
+  * @return {number}
   */
   async count (transaction = null) {
     const store = await this.#backinfront.openStore(this.storeName, transaction || 'readonly')
@@ -184,6 +191,8 @@ export default class Store {
   /**
   * Get all items and the count
   * @param {object} condition - list of filters (where, limit, offset, order)
+  * @param {IDBTransaction} transaction
+  * @return {object}
   */
   async findManyAndCount (condition = null, transaction = null) {
     const store = await this.#backinfront.openStore(this.storeName, transaction || 'readonly')
@@ -242,7 +251,8 @@ export default class Store {
   /**
   * Get all items
   * @param {object} condition - list of filters (where, limit, offset, order)
-  * @return {array}
+  * @param {IDBTransaction} transaction
+  * @return {Array<object>}
   */
   async findMany (condition = null, transaction = null) {
     const { rows } = await this.findManyAndCount(condition, transaction)
@@ -252,6 +262,7 @@ export default class Store {
   /**
   * Get an item with a primary key
   * @param {string} primaryKeyValue
+  * @param {IDBTransaction} transaction
   * @return {object}
   */
   async findOne (primaryKeyValue, transaction = null) {
@@ -292,6 +303,7 @@ export default class Store {
   * Insert a new item
   * @param {object} data
   * @param {IDBTransaction} transaction
+  * @return {object}
   */
   async create (data, transaction = null) {
     let autocommit = false
@@ -322,6 +334,7 @@ export default class Store {
   * @param {string} primaryKeyValue
   * @param {object} data
   * @param {IDBTransaction} transaction
+  * @return {object}
   */
   async update (primaryKeyValue, data, transaction = null) {
     let autocommit = false

@@ -14,7 +14,7 @@ export default {
       method: 'GET',
       pathname: '/listDevelopers',
       action: async (ctx, { User }) => {
-        return User.findAll({
+        return User.findMany({
           where: {
             $and: [
               { status: 'ACTIVATED' },
@@ -26,12 +26,12 @@ export default {
     },
     {
       method: 'GET',
-      pathname: '/listDevelopersAvailable',
+      pathname: '/listAvailableDevelopers',
       // Advanced example of user availability for project assignement
       action: async ({ searchParams }, { Project, User }) => {
         const { start, end, projectId } = searchParams
 
-        const projects = await Project.findAll({
+        const projects = await Project.findMany({
           where: {
             $and: [
               // Exclude the current project
@@ -79,7 +79,7 @@ export default {
 
         const unavailableDevelopers = projects.map(project => project.developer.id)
 
-        return User.findAndCountAll({
+        return User.findManyAndCount({
           where: {
             $and: [
               { status: 'ACTIVATED' },

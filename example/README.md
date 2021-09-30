@@ -1,4 +1,9 @@
 # Example
 
-- Config: main Backinfront config file and an example of the service worker part of messaging with clients
-- Stores: dedicated folder for Store Object
+- ./config:
+  - backinfront.js: main Backinfront config file
+  - messaging.js: how to communicate with service worker clients (windows)
+- ./stores:
+  - Contact.js: Store which implements advanced search action
+  - User.js: Store which implements some specific actions
+  - Project.js: Store which implements a wide range of Store capabilities

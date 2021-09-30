@@ -41,7 +41,7 @@ export default {
           }
         }
 
-        return Clientfile.findAndCountAll({
+        return Clientfile.findManyAndCount({
           where: where,
           offset: offset,
           limit: limit,
@@ -51,9 +51,9 @@ export default {
     },
     {
       method: 'GET',
-      pathname: '/listProjectsUnscheduled',
+      pathname: '/listUnscheduledProjects',
       action: async (ctx, { Project }) => {
-        return Project.findAll({
+        return Project.findMany({
           where: {
             status: 'UNSCHEDULED'
           },
@@ -63,12 +63,13 @@ export default {
     },
     {
       method: 'GET',
-      pathname: '/listProjectsScheduled',
+      pathname: '/listScheduledProjects',
       action: async ({ searchParams }, { Project }) => {
         const { start, end } = searchParams
 
-        return Project.findAll({
+        return Project.findMany({
           where: {
+            status: 'UNSCHEDULED',
             startDate: {
               $gte: start,
               $lte: end
@@ -79,8 +80,11 @@ export default {
     },
     {
       method: 'PUT',
-      pathname: '/:projectId/acceptQuote',
+      pathname: '/:projectId/accept',
       action: async ({ pathParams, body, transaction }, { Project }) => {
+        // if you want to use only one transaction for a list of actions
+        // you MUST use the `transaction` member provided by the context
+        // in every database method
         const projectData = body
         const project = await Project.findOne(pathParams.projectId, transaction)
 
@@ -91,7 +95,7 @@ export default {
         projectData.acceptedAt = new Date()
         projectData.status = 'ACCEPTED'
 
-        return Project.update(project.id, projectData, transaction) // Use the transaction provided in the context for every write operation
+        return Project.update(project.id, projectData, transaction)
       }
     }
   ]

@@ -693,7 +693,7 @@ export default class Backinfront {
 
   /**
   * Fill the database with initial data
-  * @param {array} storesToInclude
+  * @param {Array<string>} storesToInclude
   */
   async populate (storesToInclude = []) {
     // Process filter options
