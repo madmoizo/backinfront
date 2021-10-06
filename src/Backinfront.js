@@ -556,10 +556,6 @@ export default class Backinfront {
   #findRouteFromRequest (request) {
     const urlToTest = getUrlPath(new URL(request.url))
 
-    if (!urlToTest.startsWith(this.baseUrl)) {
-      return undefined
-    }
-
     return this.routes
       .filter(route => request.method === route.method)
       .find(route => route.regexp.test(urlToTest))
