@@ -113,8 +113,8 @@ export default class Store {
   * @param {IDBTransaction} transaction
   * @return {number}
   */
-  async count (transaction = null) {
-    const store = await this.#backinfront.openStore(this.storeName, transaction || 'readonly')
+  async count (transaction = 'readonly') {
+    const store = await this.#backinfront.openStore(this.storeName, transaction)
     const count = await store.count()
     return count
   }
@@ -122,11 +122,11 @@ export default class Store {
   /**
   * Get all items and the count
   * @param {object} condition - list of filters (where, limit, offset, order)
-  * @param {IDBTransaction} transaction
+  * @param {IDBTransaction|'readonly'} transaction
   * @return {object}
   */
-  async findManyAndCount (condition = null, transaction = null) {
-    const store = await this.#backinfront.openStore(this.storeName, transaction || 'readonly')
+  async findManyAndCount (condition = null, transaction = 'readonly') {
+    const store = await this.#backinfront.openStore(this.storeName, transaction)
 
     if (!condition) {
       const rows = await store.getAll()
@@ -182,10 +182,10 @@ export default class Store {
   /**
   * Get all items
   * @param {object} condition - list of filters (where, limit, offset, order)
-  * @param {IDBTransaction} transaction
+  * @param {IDBTransaction|'readonly'} transaction
   * @return {Array<object>}
   */
-  async findMany (condition = null, transaction = null) {
+  async findMany (condition = null, transaction = 'readonly') {
     const { rows } = await this.findManyAndCount(condition, transaction)
     return rows
   }
