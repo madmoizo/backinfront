@@ -113,8 +113,8 @@ export default class Store {
   * @param {IDBTransaction} transaction
   * @return {number}
   */
-  async count (transaction = 'readonly') {
-    const store = await this.#backinfront.openStore(this.storeName, transaction)
+  async count (transaction = null) {
+    const store = await this.#backinfront.openStore(this.storeName, transaction || 'readonly')
     const count = await store.count()
     return count
   }
@@ -122,11 +122,11 @@ export default class Store {
   /**
   * Get all items and the count
   * @param {object} condition - list of filters (where, limit, offset, order)
-  * @param {IDBTransaction|'readonly'} transaction
+  * @param {IDBTransaction} transaction
   * @return {object}
   */
-  async findManyAndCount (condition = null, transaction = 'readonly') {
-    const store = await this.#backinfront.openStore(this.storeName, transaction)
+  async findManyAndCount (condition = null, transaction = null) {
+    const store = await this.#backinfront.openStore(this.storeName, transaction || 'readonly')
 
     if (!condition) {
       const rows = await store.getAll()
@@ -182,10 +182,10 @@ export default class Store {
   /**
   * Get all items
   * @param {object} condition - list of filters (where, limit, offset, order)
-  * @param {IDBTransaction|'readonly'} transaction
+  * @param {IDBTransaction} transaction
   * @return {Array<object>}
   */
-  async findMany (condition = null, transaction = 'readonly') {
+  async findMany (condition = null, transaction = null) {
     const { rows } = await this.findManyAndCount(condition, transaction)
     return rows
   }
@@ -193,10 +193,10 @@ export default class Store {
   /**
   * Get an item with a primary key
   * @param {string} primaryKeyValue
-  * @param {IDBTransaction|'readonly'} transaction
+  * @param {IDBTransaction} transaction
   * @return {object}
   */
-  async findOne (primaryKeyValue, transaction = 'readonly') {
+  async findOne (primaryKeyValue, transaction = null) {
     // primaryKey is a condition if it's an object
     if (isObject(primaryKeyValue)) {
       const rows = await this.findMany(primaryKeyValue, transaction)
@@ -206,27 +206,27 @@ export default class Store {
       return rows[0]
     }
 
-    const store = await this.#backinfront.openStore(this.storeName, transaction)
+    const store = await this.#backinfront.openStore(this.storeName, transaction || 'readonly')
     const row = await store.get(primaryKeyValue)
     return row
   }
 
   /**
   * Clear the store
-  * @param {IDBTransaction|'readwrite'} transaction
+  * @param {IDBTransaction} transaction
   */
-  async clear (transaction = 'readwrite') {
-    const store = await this.#backinfront.openStore(this.storeName, transaction)
+  async clear (transaction = null) {
+    const store = await this.#backinfront.openStore(this.storeName, transaction || 'readwrite')
     await store.clear()
   }
 
   /**
   * Destroy one item
   * @param {string} primaryKeyValue
-  * @param {IDBTransaction|'readwrite'} transaction
+  * @param {IDBTransaction} transaction
   */
-  async destroy (primaryKeyValue, transaction = 'readwrite') {
-    const store = await this.#backinfront.openStore(this.storeName, transaction)
+  async destroy (primaryKeyValue, transaction = null) {
+    const store = await this.#backinfront.openStore(this.storeName, transaction || 'readwrite')
     await store.delete(primaryKeyValue)
   }
 
