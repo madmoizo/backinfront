@@ -4,8 +4,6 @@ import isObject from './utils/isObject.js'
 import isArray from './utils/isArray.js'
 import arrayToObject from './utils/arrayToObject.js'
 import checkUserInput from './utils/checkUserInput.js'
-import urlToRegexp from './utils/urlToRegexp.js'
-import joinPaths from './utils/joinPaths.js'
 
 
 export default class Store {
@@ -13,8 +11,6 @@ export default class Store {
   storeName
   primaryKey
   indexes = {}
-  endpoint
-  routes = []
   beforeCreate = (data) => null
 
   /**
@@ -27,15 +23,12 @@ export default class Store {
       storeName: { type: 'string', required: true },
       primaryKey: { type: 'string', required: true },
       indexes: { type: 'object' },
-      endpoint: { type: 'string', required: true },
-      routes: { type: 'array' },
       beforeCreate: { type: 'function' }
     }, `[Backinfront][Store:${options.storeName}]`)
 
     this.#backinfront = backinfront
     this.storeName = options.storeName
     this.primaryKey = options.primaryKey
-    this.endpoint = options.endpoint
 
     if ('indexes' in options) {
       this.indexes = options.indexes
@@ -43,68 +36,6 @@ export default class Store {
     if ('beforeCreate' in options) {
       this.beforeCreate = options.beforeCreate
     }
-
-    if ('routes' in options) {
-      const predefinedRoutes = {
-        'create': {
-          method: 'POST',
-          pathname: '/',
-          action: async ({ body, transaction }, stores) => {
-            return stores[this.storeName].create(body, transaction)
-          }
-        },
-        'list': {
-          method: 'GET',
-          pathname: '/',
-          action: async ({ transaction }, stores) => {
-            return stores[this.storeName].findManyAndCount(null, transaction)
-          }
-        },
-        'retrieve': {
-          method: 'GET',
-          pathname: '/:primaryKey',
-          action: async ({ pathParams, transaction }, stores) => {
-            return stores[this.storeName].findOne(pathParams.primaryKey, transaction)
-          }
-        },
-        'update': {
-          method: 'PUT',
-          pathname: '/:primaryKey',
-          action: async ({ pathParams, body, transaction }, stores) => {
-            return stores[this.storeName].update(pathParams.primaryKey, body, transaction)
-          }
-        }
-      }
-
-      for (const route of options.routes) {
-        if (isObject(route)) {
-          this.addRoute(route)
-        } else if (route in predefinedRoutes) {
-          this.addRoute(predefinedRoutes[route])
-        }
-      }
-    }
-  }
-
-  /**
-  * Add a route to the global list
-  * @param {object} routeParams
-  * @param {string} routeParams.method
-  * @param {string} routeParams.pathname
-  * @param {function} routeParams.action
-  */
-  addRoute ({ method, pathname, action }) {
-    const urlString = joinPaths(this.#backinfront.baseUrl, this.endpoint, pathname)
-    const routeRegexp = urlToRegexp(urlString)
-
-    this.routes.push({
-      method: method.toUpperCase(),
-      pathname: pathname,
-      action: action,
-      specificity: (pathname.split('/').length * 2) - routeRegexp.pathParams.length,
-      ...routeRegexp,
-    })
-    this.routes.sort((a, b) => b.specificity - a.specificity)
   }
 
   /*****************************************************************
@@ -262,10 +193,10 @@ export default class Store {
   /**
   * Get an item with a primary key
   * @param {string} primaryKeyValue
-  * @param {IDBTransaction} transaction
+  * @param {IDBTransaction|'readonly'} transaction
   * @return {object}
   */
-  async findOne (primaryKeyValue, transaction = null) {
+  async findOne (primaryKeyValue, transaction = 'readonly') {
     // primaryKey is a condition if it's an object
     if (isObject(primaryKeyValue)) {
       const rows = await this.findMany(primaryKeyValue, transaction)
@@ -275,27 +206,27 @@ export default class Store {
       return rows[0]
     }
 
-    const store = await this.#backinfront.openStore(this.storeName, transaction || 'readonly')
+    const store = await this.#backinfront.openStore(this.storeName, transaction)
     const row = await store.get(primaryKeyValue)
     return row
   }
 
   /**
   * Clear the store
-  * @param {IDBTransaction} transaction
+  * @param {IDBTransaction|'readwrite'} transaction
   */
-  async clear (transaction = null) {
-    const store = await this.#backinfront.openStore(this.storeName, transaction || 'readwrite')
+  async clear (transaction = 'readwrite') {
+    const store = await this.#backinfront.openStore(this.storeName, transaction)
     await store.clear()
   }
 
   /**
   * Destroy one item
   * @param {string} primaryKeyValue
-  * @param {IDBTransaction} transaction
+  * @param {IDBTransaction|'readwrite'} transaction
   */
-  async destroy (primaryKeyValue, transaction = null) {
-    const store = await this.#backinfront.openStore(this.storeName, transaction || 'readwrite')
+  async destroy (primaryKeyValue, transaction = 'readwrite') {
+    const store = await this.#backinfront.openStore(this.storeName, transaction)
     await store.delete(primaryKeyValue)
   }
 

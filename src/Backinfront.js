@@ -2,6 +2,7 @@ import { openDB, deleteDB } from 'idb'
 
 import QueryLanguage from './QueryLanguage.js'
 import Store from './Store.js'
+import Router from './Router.js'
 
 import checkUserInput from './utils/checkUserInput.js'
 import isDate from './utils/isDate.js'
@@ -9,7 +10,6 @@ import isArray from './utils/isArray.js'
 import parseDate from './utils/parseDate.js'
 import isAfterDate from './utils/isAfterDate.js'
 import getUrlPath from './utils/getUrlPath.js'
-import joinPaths from './utils/joinPaths.js'
 import generateUUID from './utils/generateUUID.js'
 import waitUntil from './utils/waitUntil.js'
 import deduplicateArray from './utils/deduplicateArray.js'
@@ -92,8 +92,8 @@ export default class Backinfront {
   routeState = () => null
   formatRouteSearchParam = (value) => value
   formatRoutePathParam = (value) => value
-  onRouteActionError = () => null
-  onRouteActionSuccess = () => null
+  onRouteError = () => null
+  onRouteSuccess = () => null
   onPopulateSuccess = () => null
   onPopulateError = () => null
   onSyncSuccess = () => null
@@ -105,16 +105,16 @@ export default class Backinfront {
   * @param {object} options
   * @param {string} options.databaseName
   * @param {Array<object>} options.stores - list of store's configurations
-  * @param {string} options.baseUrl - base url used for populate & sync
+  * @param {Array<object>} options.router - list of store's configurations
   * @param {function} options.authToken - must return a JWT to authenticate populate & sync requests
-  * @param {string} options.populateEndpoint - part of url corresponding to the populate endpoint
-  * @param {string} [options.syncEndpoint] - part of url corresponding to the sync endpoint
+  * @param {string} options.populateUrl - part of url corresponding to the populate endpoint
+  * @param {string} [options.syncUrl] - part of url corresponding to the sync endpoint
   * @param {function} [options.routeState] - must return an object with data available on every offline handled requests
   * @param {function} [options.formatDataBeforeSave] - format data before insertion into indexeddb
   * @param {function} [options.formatRouteSearchParam] - format Request's search params (example: transform comma separated string into array)
   * @param {function} [options.formatRoutePathParam] - format Route's customs params
-  * @param {function} [options.onRouteActionSuccess]
-  * @param {function} [options.onRouteActionError]
+  * @param {function} [options.onRouteSuccess]
+  * @param {function} [options.onRouteError]
   * @param {function} [options.onPopulateSuccess]
   * @param {function} [options.onPopulateError]
   * @param {function} [options.onSyncSuccess]
@@ -125,16 +125,16 @@ export default class Backinfront {
     checkUserInput(options, {
       databaseName: { type: 'string', required: true },
       stores: { type: 'array', required: true },
-      baseUrl: { type: 'string', required: true },
-      syncEndpoint: { type: 'string', required: true },
-      populateEndpoint: { type: 'string', required: true },
+      routers: { type: 'array', required: true },
+      syncUrl: { type: 'string', required: true },
+      populateUrl: { type: 'string', required: true },
       authToken: { type: 'function' },
       routeState: { type: 'function' },
       formatDataBeforeSave: { type: 'function' },
       formatRouteSearchParam: { type: 'function' },
       formatRoutePathParam: { type: 'function' },
-      onRouteActionSuccess: { type: 'function' },
-      onRouteActionError: { type: 'function' },
+      onRouteSuccess: { type: 'function' },
+      onRouteError: { type: 'function' },
       onPopulateSuccess: { type: 'function' },
       onPopulateError: { type: 'function' },
       onSyncSuccess: { type: 'function' },
@@ -143,10 +143,11 @@ export default class Backinfront {
 
     // Required params
     this.databaseName = options.databaseName
-    this.baseUrl = options.baseUrl
-    this.syncEndpoint = options.syncEndpoint
-    this.populateEndpoint = options.populateEndpoint
     this.addStores(options.stores)
+    this.addRouters(options.routers)
+    this.syncUrl = options.syncUrl
+    this.populateUrl = options.populateUrl
+
     // Optional params
     if ('authToken' in options) {
       this.authToken = options.authToken
@@ -163,11 +164,11 @@ export default class Backinfront {
     if ('formatRoutePathParam' in options) {
       this.formatRoutePathParam = options.formatRoutePathParam
     }
-    if ('onRouteActionSuccess' in options) {
-      this.onRouteActionSuccess = options.onRouteActionSuccess
+    if ('onRouteSuccess' in options) {
+      this.onRouteSuccess = options.onRouteSuccess
     }
-    if ('onRouteActionError' in options) {
-      this.onRouteActionError = options.onRouteActionError
+    if ('onRouteError' in options) {
+      this.onRouteError = options.onRouteError
     }
     if ('onPopulateSuccess' in options) {
       this.onPopulateSuccess = options.onPopulateSuccess
@@ -457,7 +458,7 @@ export default class Backinfront {
   * @return {string}
   */
   #buildRequestUrl ({ pathname, searchParams }) {
-    let requestUrl = joinPaths(this.baseUrl, pathname)
+    let requestUrl = pathname
 
     if (searchParams) {
       const stringifiedSearchParams = Object.entries(searchParams)
@@ -620,13 +621,13 @@ export default class Backinfront {
       // Progressive ehancement: commit not supported by safari on iOS (last check: 15/09/21)
       ctx.transaction?.commit?.()
 
-      this.onRouteActionSuccess({ route, result })
+      this.onRouteSuccess({ route, result })
     } catch (error) {
       errorCode = 'ACTION_ERROR'
 
       ctx.transaction?.abort()
 
-      this.onRouteActionError({ route, error })
+      this.onRouteError({ route, error })
     }
 
     // Response
@@ -640,21 +641,17 @@ export default class Backinfront {
   }
 
   /**
-  * Add multiple store interfaces in a single call
+  * Add multiple stores in a single call
   * @param {Array<object>} storesParams
-  * @return {Array<object>}
   */
   addStores (storesParams) {
-    const stores = []
     for (const storeParams of storesParams) {
-      stores.push(this.addStore(storeParams))
+      this.addStore(storeParams)
     }
-
-    return stores
   }
 
   /**
-  * Add a store interface with its routes
+  * Add a store
   * @param {object} storeParams
   * @return {object}
   */
@@ -669,12 +666,32 @@ export default class Backinfront {
       this.#databaseSchema[store.storeName].indexes = store.indexes
     }
 
-    // Routes
-    this.routes.push(...store.routes)
-    // Routes must be ordered by specificity
+    return store
+  }
+
+  /**
+  * Add multiple routers in a single call
+  * @param {Array<object>} routersParams
+  */
+  addRouters (routersParams) {
+    for (const routerParams of routersParams) {
+      this.addRouter(routerParams)
+    }
+  }
+
+  /**
+  * Add a router
+  * @param {object} routerParams
+  * @return {object}
+  */
+  addRouter (routerParams) {
+    const router = new Router(routerParams)
+    // Add router's routes to the global list
+    this.routes.push(...router.routes)
+    // Routes must be reordered by specificity
     this.routes.sort((a, b) => b.specificity - a.specificity)
 
-    return store
+    return router
   }
 
   /**
@@ -704,7 +721,7 @@ export default class Backinfront {
     try {
       const serverDataToSync = await this.#fetch({
         method: 'GET',
-        pathname: this.populateEndpoint,
+        pathname: this.populateUrl,
         searchParams: {
           modelNames: storeNames
         }
@@ -765,7 +782,7 @@ export default class Backinfront {
       // Send data to sync
       const serverDataToSync = await this.#fetch({
         method: 'POST',
-        pathname: this.syncEndpoint,
+        pathname: this.syncUrl,
         searchParams: {
           lastChangeAt: currentLastChangeAt
         },

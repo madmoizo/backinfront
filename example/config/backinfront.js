@@ -3,6 +3,9 @@ import Backinfront from '../../src/backinfront/index.js'
 import UserStore from '../stores/User.js'
 import ContactStore from '../stores/Contact.js'
 import ProjectStore from '../stores/Project.js'
+import usersRouter from '../routers/users.js'
+import contactsRouter from '../routers/contacts.js'
+import projectsRouter from '../routers/projects.js'
 
 
 const backinfront = new Backinfront({
@@ -12,9 +15,13 @@ const backinfront = new Backinfront({
     ContactStore,
     ProjectStore
   ],
-  baseUrl: 'https://api.example.com',
-  populateEndpoint: 'offline/populate',
-  syncEndpoint: 'offline/sync',
+  routers: [
+    usersRouter,
+    contactsRouter,
+    projectsRouter
+  ],
+  populateUrl: 'https://api.example.com/offline/populate',
+  syncUrl: 'https://api.example.com/offline/sync',
   authToken: () => {
     return // retrieve your user's JWT from indexedDB
   },
@@ -42,10 +49,10 @@ const backinfront = new Backinfront({
   formatDataBeforeSave: () => {
     return JSON.parse(JSON.stringify(data))
   },
-  onRouteActionError: ({ route, error }) => {
+  onRouteError: ({ route, error }) => {
     console.warn(`[Backinfront][RouteError] ${route.url.href}`, error)
   },
-  onRouteActionSuccess: ({ route, result }) => {
+  onRouteSuccess: ({ route, result }) => {
     console.info(`[Backinfront][RouteSuccess] ${route.url.href}`, result)
   },
   onPopulateSuccess: () => {

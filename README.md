@@ -14,6 +14,7 @@
    1. [`backinfront.sync()`](#backinfrontsync)
    1. [`backinfront.destroy()`](#backinfrontdestroy)
    1. [`Store object`](#store-object)
+   1. [`Router object`](#router-object)
    1. [`Route object`](#route-object)
 6. [Example](#example)
 
@@ -48,16 +49,16 @@ Backinfront accepts a range of options described below
 
 1. [databaseName](#databasename)
 1. [stores](#stores)
+1. [routers](#routers)
 1. [authToken()](#authtoken)
-1. [baseUrl](#baseurl)
-1. [populateEndpoint](#populateendpoint)
-1. [syncEndpoint](#syncendpoint)
+1. [populateUrl](#populateurl)
+1. [syncUrl](#syncurl)
 1. [routeState(request)](#routestaterequest)
 1. [formatDataBeforeSave(data)](#formatdatabeforesavedata)
 1. [formatRouteSearchParam(searchParam)](#formatroutesearchparamsearchparam)
 1. [formatRoutePathParam(pathParam)](#formatroutepathparampathparam)
-1. [onRouteActionSuccess(options)](#onrouteactionsuccessoptions)
-1. [onRouteActionError(options)](#onrouteactionerroroptions)
+1. [onRouteSuccess(options)](#onroutesuccessoptions)
+1. [onRouteError(options)](#onrouteerroroptions)
 1. [onPopulateSuccess()](#onpopulatesuccess)
 1. [onPopulateError(options)](#onpopulateerroroptions)
 1. [onSyncSuccess()](#onsyncsuccess)
@@ -75,6 +76,12 @@ Backinfront accepts a range of options described below
 - Type: `Array<object>`
 - Default: []
 
+### routers
+
+- Description: List of router objects (see [Router object](#routerobject) for more details)
+- Type: `Array<object>`
+- Default: []
+
 ### authToken()
 
 - Description: Provides a JWT to authenticate requests on the server
@@ -82,20 +89,14 @@ Backinfront accepts a range of options described below
 - params: none
 - return: `string`
 
-### baseUrl
+### populateUrl
 
-- Description: Base url used to prefix all endpoints
-- Type: `string`
-- Required
-
-### populateEndpoint
-
-- Description: Part of the url corresponding to the endpoint used for database population
+- Description: url used for database population
 - Type: `string`
 
-### syncEndpoint
+### syncUrl
 
-- Description: Part of the url corresponding to the endpoint used for database synchronization
+- Description: url used for database synchronization
 - Type: `string`
 
 ### routeState(request)
@@ -132,7 +133,7 @@ Backinfront accepts a range of options described below
 - return: `string`
 - example: format date string into Date object
 
-### onRouteActionSuccess(options)
+### onRouteSuccess(options)
 
 - Description: Hook triggered after a successful offline request
 - Type: `function`
@@ -141,7 +142,7 @@ Backinfront accepts a range of options described below
   - `options.result`: `object | Array<object>`
 - return: void
 
-### onRouteActionError(options)
+### onRouteError(options)
 
 - Description: Hook triggered after a successful offline request
 - Type: `function`
@@ -221,8 +222,6 @@ A store object observe the following structure
 1. [storeName](#storeName)
 1. [primaryKey](#primaryKey)
 1. [indexes](#indexes)
-1. [endpoint](#endpoint)
-1. [routes](#routes)
 
 ### storeName
 
@@ -246,10 +245,24 @@ indexes: {
 }
 ```
 
-### endpoint
+## Router object
 
-- Description: Part of the endpoint related to the store (will be prefixed with [`baseUrl`](#baseurl))
+A router object observe the following structure
+
+1. [baseUrl](#baseurl)
+1. [storeName](#storeName)
+1. [routes](#routes)
+
+### baseUrl
+
+- Description: base url used to prefix routes
 - Type: `string`
+
+### storeName
+
+- Description: Name of the store whichs allows the use of predefined routes
+- Type: `string`
+- Required: only if you use predefined routes
 
 ### routes
 
@@ -271,7 +284,7 @@ A Route object observe the following structure
 
 ### pathname
 
-- Description: Part of the url after the [endpoint](#endpoint). You can specify `pathParams` by prefixing part of the url with `:`
+- Description: Part of the url after the [baseUrl](#baseurl). You can specify `pathParams` by prefixing part of the url with `:`
 - Type: `string`
 
 ### action(ctx,stores)
