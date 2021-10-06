@@ -5,36 +5,36 @@ import joinPaths from './utils/joinPaths.js'
 
 
 export default class Router {
-  endpoint
-  storeName
+  baseUrl
   routes = []
+  #storeName
   #predefinedRoutes = {
     'create': {
       method: 'POST',
       pathname: '/',
       action: async ({ body, transaction }, stores) => {
-        return stores[this.storeName].create(body, transaction)
+        return stores[this.#storeName].create(body, transaction)
       }
     },
     'list': {
       method: 'GET',
       pathname: '/',
       action: async ({ transaction }, stores) => {
-        return stores[this.storeName].findManyAndCount(null, transaction)
+        return stores[this.#storeName].findManyAndCount(null, transaction)
       }
     },
     'retrieve': {
       method: 'GET',
       pathname: '/:primaryKey',
       action: async ({ pathParams, transaction }, stores) => {
-        return stores[this.storeName].findOne(pathParams.primaryKey, transaction)
+        return stores[this.#storeName].findOne(pathParams.primaryKey, transaction)
       }
     },
     'update': {
       method: 'PUT',
       pathname: '/:primaryKey',
       action: async ({ pathParams, body, transaction }, stores) => {
-        return stores[this.storeName].update(pathParams.primaryKey, body, transaction)
+        return stores[this.#storeName].update(pathParams.primaryKey, body, transaction)
       }
     }
   }
@@ -56,15 +56,15 @@ export default class Router {
     this.baseUrl = options.baseUrl
 
     if ('storeName' in options) {
-      this.storeName = options.storeName
+      this.#storeName = options.storeName
     }
 
     if ('routes' in options) {
       for (const route of options.routes) {
         if (isObject(route)) {
           this.addRoute(route)
-        } else if (route in this.#predefinedRoutes && this.storeName) {
-          this.addRoute(this.predefinedRoutes[route])
+        } else if (route in this.#predefinedRoutes && this.#storeName) {
+          this.addRoute(this.#predefinedRoutes[route])
         }
       }
     }
