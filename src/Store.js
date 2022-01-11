@@ -158,7 +158,7 @@ export default class Store {
     let cursor = await index.openCursor(null, direction)
 
     // Cursor iteration
-    if (cursor) for await (const cursor of cursor) {
+    while (cursor) {
       if (QueryLanguage.isConditionValid(condition.where, cursor.value)) {
         count += 1
 
@@ -169,6 +169,8 @@ export default class Store {
           rows.push(cursor.value)
         }
       }
+
+      cursor = await cursor.continue()
     }
 
     return {
