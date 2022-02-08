@@ -35,11 +35,7 @@ export default class Backinfront {
      * @param {string} options.keyPath
      */
     createStore (transaction, { storeName, keyPath }) {
-      if (keyPath) {
-        transaction.db.createObjectStore(storeName, { keyPath: keyPath })
-      } else {
-        transaction.db.createObjectStore(storeName)
-      }
+      transaction.db.createObjectStore(storeName, { keyPath }) // nullish keyPath is ignored
     },
     /**
      * @param {IDBTransaction} transaction
@@ -73,16 +69,16 @@ export default class Backinfront {
   #databaseConfigurationStarted = false
   #databaseConfigurationEnded = false
   #syncInProgress = false
-  #syncMetaStoreName = '__Meta'
+  #metadataStoreName = '__Metadata'
   #syncQueueStoreName = '__SyncQueue'
   #databaseSchema = {
-    [this.#syncMetaStoreName]: {
+    [this.#metadataStoreName]: {
       keyPath: null
     },
     [this.#syncQueueStoreName]: {
       keyPath: 'id',
       indexes: {
-        'createdAt': 'createdAt'
+        createdAt: 'createdAt'
       }
     }
   }
@@ -392,8 +388,8 @@ export default class Backinfront {
    * Get a value from the key-value store owned by the lib
    * @param  {string} key
    */
-  async #getMeta (key) {
-    const store = await this.openStore(this.#syncMetaStoreName, 'readonly')
+  async #getMetadata (key) {
+    const store = await this.openStore(this.#metadataStoreName, 'readonly')
     const value = await store.get(key)
     return value
   }
@@ -403,8 +399,8 @@ export default class Backinfront {
    * @param {string} key
    * @param {any} value
    */
-  async #setMeta (key, value) {
-    const store = await this.openStore(this.#syncMetaStoreName, 'readwrite')
+  async #setMetadata (key, value) {
+    const store = await this.openStore(this.#metadataStoreName, 'readwrite')
     await store.put(value, key)
   }
 
@@ -755,7 +751,7 @@ export default class Backinfront {
       this.#syncInProgress = true
 
       // Init lastChangeAt
-      let currentLastChangeAt = await this.#getMeta('lastChangeAt')
+      let currentLastChangeAt = await this.#getMetadata('lastChangeAt')
       let nextLastChangeAt = null
 
       if (!currentLastChangeAt) {
@@ -799,7 +795,7 @@ export default class Backinfront {
 
       // Save the last sync date
       if (nextLastChangeAt) {
-        await this.#setMeta('lastChangeAt', nextLastChangeAt.toJSON())
+        await this.#setMetadata('lastChangeAt', nextLastChangeAt.toJSON())
       }
 
       // Clear the queue if not empty
