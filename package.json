@@ -1,6 +1,6 @@
 {
   "name": "backinfront",
-  "version": "0.0.1",
+  "version": "1.0.0",
   "description": "Use the frontend as a backend",
   "main": "index.js",
   "module": "index.js",
@@ -9,7 +9,7 @@
     "type": "git",
     "url": "git://github.com/frlinw/backinfront.git"
   },
-  "author": "frlinw",
+  "author": "Matthieu Dambrune <matthieu.dambrune@gmail.com>",
   "license": "ISC",
   "dependencies": {
     "idb": "^6.0.0"
