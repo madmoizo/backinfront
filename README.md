@@ -131,7 +131,6 @@ Backinfront accepts a range of options described below
 - params:
   - `value`: string
 - return: `string`
-- example: format date string into Date object
 
 ### onRouteSuccess(options)
 
