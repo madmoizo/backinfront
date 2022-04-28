@@ -1,7 +1,7 @@
 {
   "name": "backinfront",
-  "version": "1.0.0",
-  "description": "Use the frontend as a backend",
+  "version": "1.1.0",
+  "description": "A backend for your frontend, which sync!",
   "main": "index.js",
   "module": "index.js",
   "scripts": {},

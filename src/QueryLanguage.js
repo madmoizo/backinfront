@@ -1,15 +1,8 @@
 import isObject from './utils/isObject.js'
-import normalizeForSearch from './utils/normalizeForSearch.js'
 
 
 export default class QueryLanguage {
   static #OPERATORS = {
-    /**
-     * @param {any} storeValue
-     * @param {any} value
-     * @return {boolean}
-     */
-    $function: (storeValue, value) => value(storeValue),
     /**
      * @param {any} storeValue
      * @param {any} value
@@ -22,24 +15,6 @@ export default class QueryLanguage {
      * @return {boolean}
      */
     $notequal: (storeValue, value) => storeValue !== value,
-    /**
-     * @param {any} storeValue
-     * @param {any} value
-     * @return {boolean}
-     */
-    $in: (storeValue, value) => value.includes(storeValue),
-    /**
-     * @param {any} storeValue
-     * @param {any} value
-     * @return {boolean}
-     */
-    $notin: (storeValue, value) => !value.includes(storeValue),
-    /**
-     * @param {any} storeValue
-     * @param {any} value
-     * @return {boolean}
-     */
-    $like: (storeValue, value) => normalizeForSearch(storeValue).includes(value),
     /**
      * @param {any} storeValue
      * @param {any} value
@@ -69,7 +44,31 @@ export default class QueryLanguage {
      * @param {any} value
      * @return {boolean}
      */
-    $some: (storeValue, value) => storeValue && storeValue.some(item => item[value[0]] === value[1])
+    $in: (storeValue, value) => value.includes(storeValue),
+    /**
+    * @param {any} storeValue
+    * @param {any} value
+    * @return {boolean}
+    */
+    $notin: (storeValue, value) => !value.includes(storeValue),
+    /**
+    * @param {any} storeValue
+    * @param {any} value
+    * @return {boolean}
+    */
+    $like: (storeValue, value) => value[0](storeValue).includes(value[0](value[1])),
+    /**
+     * @param {any} storeValue
+     * @param {any} value
+     * @return {boolean}
+     */
+    $some: (storeValue, value) => storeValue?.some(value) ?? false,
+    /**
+     * @param {any} storeValue
+     * @param {any} value
+     * @return {boolean}
+     */
+    $function: (storeValue, value) => value(storeValue)
   }
 
   /**
