@@ -49,10 +49,8 @@ export default class Router {
     // Throw an error if user input does not match the spec
     processUserInput({
       errorPrefix: `[Backinfront][Router:${options.baseUrl}]`,
+      assign: (prop) => this[prop] = options[prop],
       userInput: options,
-      assign: (prop) => {
-        this[prop] = options[prop]
-      },
       specifications: {
         baseUrl: { type: 'string', required: true },
         storeName: { type: 'string' },

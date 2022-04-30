@@ -23,10 +23,8 @@ export default class Store {
     // Throw an error if user input does not match the spec
     processUserInput({
       errorPrefix: `[Backinfront][Store:${options.storeName}]`,
+      assign: (prop) => this[prop] = options[prop],
       userInput: options,
-      assign: (prop) => {
-        this[prop] = options[prop]
-      },
       specifications: {
         storeName: { type: 'string', required: true },
         primaryKey: { type: 'string', required: true },

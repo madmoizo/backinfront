@@ -121,16 +121,14 @@ export default class Backinfront {
     // Throw an error if user input does not match the spec
     processUserInput({
       errorPrefix: '[Backinfront]',
+      assign: (prop) => this[prop] = options[prop],
       userInput: options,
-      assign: (prop) => {
-        this[prop] = options[prop]
-      },
       specifications: {
         databaseName: { type: 'string', required: true },
         syncUrl: { type: 'string', required: true },
         populateUrl: { type: 'string', required: true },
         stores: { type: 'array', required: true, assign: (prop) => this.addStores(options[prop]) },
-        routers: { type: 'array', required: true, assign: (prop) => this.addStores(options[prop]) },
+        routers: { type: 'array', required: true, assign: (prop) => this.addRouters(options[prop]) },
         authentication: { type: ['function', 'boolean'] },
         routeState: { type: 'function' },
         formatDataBeforeSave: { type: 'function' },

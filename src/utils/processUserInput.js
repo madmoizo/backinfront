@@ -16,16 +16,17 @@ const TYPES = {
 
 /**
  * Check the existence and type validity of a user input
- * @param {object} instance
- * @param {object} userInput
- * @param {object} specifications
- * @param {string} errorPrefix
+ * @param {object} options
+ * @param {object} [options.userInput]
+ * @param {object} [options.specifications]
+ * @param {string} [options.errorPrefix]
+ * @param {function} [options.assign]
  */
-export default function processUserInput ({ userInput, errorPrefix, specifications }) {
+export default function processUserInput ({ userInput, errorPrefix, assign, specifications }) {
   for (const [prop, propSpecs] of Object.entries(specifications)) {
     if (prop in userInput) {
       if (
-        isArray(propSpecs.type) && !propSpecs.type.every(type => TYPES[type](userInput[prop]))
+        isArray(propSpecs.type) && !propSpecs.type.some(type => TYPES[type](userInput[prop]))
         || isString(propSpecs.type) && !TYPES[propSpecs.type](userInput[prop])
       ) {
         throw new Error(`${errorPrefix} \`${prop}\` must be a ${propSpecs.type}`)
@@ -33,8 +34,8 @@ export default function processUserInput ({ userInput, errorPrefix, specificatio
 
       if (propSpecs.assign) {
         propSpecs.assign(prop)
-      } else if (specifications.assign) {
-        specifications.assign(prop)
+      } else if (assign) {
+        assign(prop)
       }
     } else if (propSpecs.required) {
       throw new Error(`${errorPrefix} \`${prop}\` is required`)
