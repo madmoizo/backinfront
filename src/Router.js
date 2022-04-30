@@ -1,7 +1,7 @@
 import isObject from './utils/isObject.js'
-import checkUserInput from './utils/checkUserInput.js'
-import urlToRegexp from './utils/urlToRegexp.js'
 import joinPaths from './utils/joinPaths.js'
+import urlToRegexp from './utils/urlToRegexp.js'
+import processUserInput from './utils/processUserInput.js'
 
 
 export default class Router {
@@ -47,25 +47,30 @@ export default class Router {
   */
   constructor (options = {}) {
     // Throw an error if user input does not match the spec
-    checkUserInput(options, {
-      baseUrl: { type: 'string', required: true },
-      storeName: { type: 'string' },
-      routes: { type: 'array' },
-    }, `[Backinfront][Router:${options.baseUrl}]`)
+    processUserInput({
+      errorPrefix: `[Backinfront][Router:${options.baseUrl}]`,
+      userInput: options,
+      assign: (prop) => {
+        this[prop] = options[prop]
+      },
+      specifications: {
+        baseUrl: { type: 'string', required: true },
+        storeName: { type: 'string' },
+        routes: { type: 'array', assign: (prop) => this.addRoutes(options[prop]) },
+      }
+    })
+  }
 
-    this.baseUrl = options.baseUrl
-
-    if ('storeName' in options) {
-      this.storeName = options.storeName
-    }
-
-    if ('routes' in options) {
-      for (const route of options.routes) {
-        if (isObject(route)) {
-          this.addRoute(route)
-        } else if (route in this.#predefinedRoutes && this.storeName) {
-          this.addRoute(this.#predefinedRoutes[route])
-        }
+  /**
+  * Add a list of routes
+  * @param {array<object>} routes
+  */
+  addRoutes (routes) {
+    for (const route of routes) {
+      if (isObject(route)) {
+        this.addRoute(route)
+      } else if (route in this.#predefinedRoutes && this.storeName) {
+        this.addRoute(this.#predefinedRoutes[route])
       }
     }
   }

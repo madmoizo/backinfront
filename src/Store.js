@@ -3,7 +3,7 @@ import QueryLanguage from './QueryLanguage.js'
 import isObject from './utils/isObject.js'
 import isArray from './utils/isArray.js'
 import arrayToObject from './utils/arrayToObject.js'
-import checkUserInput from './utils/checkUserInput.js'
+import processUserInput from './utils/processUserInput.js'
 
 
 export default class Store {
@@ -18,24 +18,22 @@ export default class Store {
   * @param {object} options
   */
   constructor (backinfront, options = {}) {
-    // Throw an error if user input does not match the spec
-    checkUserInput(options, {
-      storeName: { type: 'string', required: true },
-      primaryKey: { type: 'string', required: true },
-      indexes: { type: 'object' },
-      beforeCreate: { type: 'function' }
-    }, `[Backinfront][Store:${options.storeName}]`)
-
     this.#backinfront = backinfront
-    this.storeName = options.storeName
-    this.primaryKey = options.primaryKey
 
-    if ('indexes' in options) {
-      this.indexes = options.indexes
-    }
-    if ('beforeCreate' in options) {
-      this.beforeCreate = options.beforeCreate
-    }
+    // Throw an error if user input does not match the spec
+    processUserInput({
+      errorPrefix: `[Backinfront][Store:${options.storeName}]`,
+      userInput: options,
+      assign: (prop) => {
+        this[prop] = options[prop]
+      },
+      specifications: {
+        storeName: { type: 'string', required: true },
+        primaryKey: { type: 'string', required: true },
+        indexes: { type: 'object' },
+        beforeCreate: { type: 'function' }
+      }
+    })
   }
 
   /*****************************************************************

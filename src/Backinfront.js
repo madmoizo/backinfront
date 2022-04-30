@@ -4,11 +4,7 @@ import QueryLanguage from './QueryLanguage.js'
 import Store from './Store.js'
 import Router from './Router.js'
 
-import isString from './utils/isString.js'
-import isFunction from './utils/isFunction.js'
 import isArray from './utils/isArray.js'
-import isObject from './utils/isObject.js'
-import isBoolean from './utils/isBoolean.js'
 import isDate from './utils/isDate.js'
 import parseDate from './utils/parseDate.js'
 import isAfterDate from './utils/isAfterDate.js'
@@ -16,15 +12,8 @@ import getUrlPath from './utils/getUrlPath.js'
 import generateUUID from './utils/generateUUID.js'
 import waitUntil from './utils/waitUntil.js'
 import deduplicateArray from './utils/deduplicateArray.js'
+import processUserInput from './utils/processUserInput.js'
 
-
-const TYPES = {
-  array: isArray,
-  function: isFunction,
-  object: isObject,
-  string: isString,
-  boolean: isBoolean
-}
 
 const ROUTE_ERRORS = {
   'NOT_FOUND': {
@@ -107,35 +96,6 @@ export default class Backinfront {
   onSyncSuccess = () => null
   onSyncError = () => null
   formatDataBeforeSave = (data) => JSON.parse(JSON.stringify(data)) // by default, easiest way to convert Date to json & clean an object  
-  
-  /**
-   * Check the existence and type validity of a user input
-   * @param {object} userInput
-   * @param {object} specifications
-   * @param {string} errorPrefix
-   */
-  #processUserInput ({ userInput, errorPrefix, specifications }) {
-    for (const [prop, propSpecs] of Object.entries(specifications)) {
-      // Optionnal options
-      if (prop in userInput) {
-        if (
-          isArray(propSpecs.type) && !propSpecs.type.every(type => TYPES[type](userInput[prop]))
-          || isString(propSpecs.type) && !TYPES[propSpecs.type](userInput[prop])
-        ) {
-          throw new Error(`${errorPrefix} \`${prop}\` must be a ${propSpecs.type}`)
-        }
-
-        if (propSpecs.assign !== false) {
-          this[prop] = userInput[prop]
-        }
-      } else {
-        if (propSpecs.required) {
-          throw new Error(`${errorPrefix} \`${prop}\` is required`)
-        }
-      }
-    }
-  }
-
 
   /**
   * @constructor
@@ -159,15 +119,18 @@ export default class Backinfront {
   */
   constructor (options = {}) {
     // Throw an error if user input does not match the spec
-    this.#processUserInput({
-      userInput: options,
+    processUserInput({
       errorPrefix: '[Backinfront]',
+      userInput: options,
+      assign: (prop) => {
+        this[prop] = options[prop]
+      },
       specifications: {
         databaseName: { type: 'string', required: true },
         syncUrl: { type: 'string', required: true },
         populateUrl: { type: 'string', required: true },
-        stores: { type: 'array', required: true, assign: false }, // Store and router required a specific processing
-        routers: { type: 'array', required: true, assign: false },
+        stores: { type: 'array', required: true, assign: (prop) => this.addStores(options[prop]) },
+        routers: { type: 'array', required: true, assign: (prop) => this.addStores(options[prop]) },
         authentication: { type: ['function', 'boolean'] },
         routeState: { type: 'function' },
         formatDataBeforeSave: { type: 'function' },
@@ -181,10 +144,6 @@ export default class Backinfront {
         onSyncError: { type: 'function' }
       }
     })
-
-    // Specific processing
-    this.addStores(options.stores)
-    this.addRouters(options.routers)
 
     // Handle routes
     self.addEventListener('fetch', (event) => {
