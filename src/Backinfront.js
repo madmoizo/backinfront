@@ -638,7 +638,7 @@ export default class Backinfront {
     if (result) {
       return new Response(JSON.stringify(result))
     }
-    return new Response(undefined, this.ROUTE_ERRORS[errorCode])
+    return new Response(undefined, ROUTE_ERRORS[errorCode])
   }
 
   /**
