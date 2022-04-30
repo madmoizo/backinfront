@@ -456,7 +456,7 @@ export default class Backinfront {
     }
 
     // Set Authorization header
-    if (authentication) {
+    if (this.authentication) {
       const token = await this.authentication()
 
       if (token) {
