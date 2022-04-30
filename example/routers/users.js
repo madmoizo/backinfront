@@ -1,6 +1,6 @@
 export default {
   baseUrl: 'https://api.example.com/users',
-  store: 'User',
+  storeName: 'User',
   routes: [
     'create',
     'list',

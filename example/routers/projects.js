@@ -1,6 +1,6 @@
 export default {
   baseUrl: 'https://api.example.com/projects',
-  store: 'Project',
+  storeName: 'Project',
   routes: [
     'retrieve',
     'update',

@@ -50,7 +50,7 @@ Backinfront accepts a range of options described below
 1. [databaseName](#databasename)
 1. [stores](#stores)
 1. [routers](#routers)
-1. [authToken()](#authtoken)
+1. [authentication()](#authentication)
 1. [populateUrl](#populateurl)
 1. [syncUrl](#syncurl)
 1. [routeState(request)](#routestaterequest)
@@ -82,10 +82,10 @@ Backinfront accepts a range of options described below
 - Type: `Array<object>`
 - Default: []
 
-### authToken()
+### authentication()
 
 - Description: Provides a JWT to authenticate requests on the server
-- Type: `function`
+- Type: `function` | `false`
 - params: none
 - return: `string`
 

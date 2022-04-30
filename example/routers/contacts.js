@@ -1,6 +1,6 @@
 export default {
   baseUrl: 'https://api.example.com/contacts',
-  store: 'Contact',
+  storeName: 'Contact',
   routes: [
     'create',
     'retrieve',

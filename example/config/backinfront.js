@@ -22,7 +22,7 @@ const backinfront = new Backinfront({
   ],
   populateUrl: 'https://api.example.com/offline/populate',
   syncUrl: 'https://api.example.com/offline/sync',
-  authToken: () => {
+  authentication: () => {
     return // retrieve your user's JWT from indexedDB
   },
   // For example, you can provide the JWT from the

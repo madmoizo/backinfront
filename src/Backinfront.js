@@ -4,9 +4,12 @@ import QueryLanguage from './QueryLanguage.js'
 import Store from './Store.js'
 import Router from './Router.js'
 
-import checkUserInput from './utils/checkUserInput.js'
 import isDate from './utils/isDate.js'
-import isArray from './utils/isArray.js'
+import isString from './isString.js'
+import isFunction from './isFunction.js'
+import isArray from './isArray.js'
+import isObject from './isObject.js'
+import isBoolean from './isBoolean.js'
 import parseDate from './utils/parseDate.js'
 import isAfterDate from './utils/isAfterDate.js'
 import getUrlPath from './utils/getUrlPath.js'
@@ -15,57 +18,66 @@ import waitUntil from './utils/waitUntil.js'
 import deduplicateArray from './utils/deduplicateArray.js'
 
 
-export default class Backinfront {
-  #LOCAL_FETCH_ERRORS = {
-    'NOT_FOUND': {
-      status: 404,
-      statusText: 'Not found'
-    },
-    'ACTION_ERROR': {
-      status: 500,
-      statusText: 'Action error'
-    }
-  }
+const TYPES = {
+  array: isArray,
+  function: isFunction,
+  object: isObject,
+  string: isString,
+  boolean: isBoolean
+}
 
-  #DB_OPERATIONS = {
-    /**
+const ROUTE_ERRORS = {
+  'NOT_FOUND': {
+    status: 404,
+    statusText: 'Not found'
+  },
+  'ACTION_ERROR': {
+    status: 500,
+    statusText: 'Action error'
+  }
+}
+
+const DB_OPERATIONS = {
+  /**
      * @param {IDBTransaction} transaction
      * @param {object} options
      * @param {string} options.storeName
      * @param {string} options.keyPath
      */
-    createStore (transaction, { storeName, keyPath }) {
-      transaction.db.createObjectStore(storeName, { keyPath }) // nullish keyPath is ignored
-    },
-    /**
-     * @param {IDBTransaction} transaction
-     * @param {object} options
-     * @param {string} options.storeName
-     */
-    deleteStore (transaction, { storeName }) {
-      transaction.db.deleteObjectStore(storeName)
-    },
-    /**
-     * @param {IDBTransaction} transaction
-     * @param {object} options
-     * @param {string} options.storeName
-     * @param {string} options.indexName
-     * @param {string} options.indexKeyPath
-     */
-    createIndex (transaction, { storeName, indexName, indexKeyPath }) {
-      transaction.objectStore(storeName).createIndex(indexName, indexKeyPath)
-    },
-    /**
-     * @param {IDBTransaction} transaction
-     * @param {object} options
-     * @param {string} options.storeName
-     * @param {string} options.indexName
-     */
-    deleteIndex (transaction, { storeName, indexName }) {
-      transaction.objectStore(storeName).deleteIndex(indexName)
-    }
+  createStore (transaction, { storeName, keyPath }) {
+    transaction.db.createObjectStore(storeName, { keyPath }) // nullish keyPath is ignored
+  },
+  /**
+   * @param {IDBTransaction} transaction
+   * @param {object} options
+   * @param {string} options.storeName
+   */
+  deleteStore (transaction, { storeName }) {
+    transaction.db.deleteObjectStore(storeName)
+  },
+  /**
+   * @param {IDBTransaction} transaction
+   * @param {object} options
+   * @param {string} options.storeName
+   * @param {string} options.indexName
+   * @param {string} options.indexKeyPath
+   */
+  createIndex (transaction, { storeName, indexName, indexKeyPath }) {
+    transaction.objectStore(storeName).createIndex(indexName, indexKeyPath)
+  },
+  /**
+   * @param {IDBTransaction} transaction
+   * @param {object} options
+   * @param {string} options.storeName
+   * @param {string} options.indexName
+   */
+  deleteIndex (transaction, { storeName, indexName }) {
+    transaction.objectStore(storeName).deleteIndex(indexName)
   }
+}
 
+
+export default class Backinfront {
   #databaseConfigurationStarted = false
   #databaseConfigurationEnded = false
   #syncInProgress = false
@@ -84,7 +96,7 @@ export default class Backinfront {
   }
   routes = []
   stores = {}
-  authToken = () => null
+  authentication = false
   routeState = () => null
   formatRouteSearchParam = (value) => value
   formatRoutePathParam = (value) => value
@@ -94,7 +106,36 @@ export default class Backinfront {
   onPopulateError = () => null
   onSyncSuccess = () => null
   onSyncError = () => null
-  formatDataBeforeSave = (data) => JSON.parse(JSON.stringify(data)) // by default, easiest way to convert Date to json & clean an object
+  formatDataBeforeSave = (data) => JSON.parse(JSON.stringify(data)) // by default, easiest way to convert Date to json & clean an object  
+  
+  /**
+   * Check the existence and type validity of a user input
+   * @param {object} userInput
+   * @param {object} specifications
+   * @param {string} errorPrefix
+   */
+  #processUserInput ({ userInput, errorPrefix, specifications }) {
+    for (const [prop, propSpecs] of Object.entries(specifications)) {
+      // Optionnal options
+      if (prop in userInput) {
+        if (
+          isArray(propSpecs.type) && !propSpecs.type.every(type => TYPES[type](userInput[prop]))
+          || isString(propSpecs.type) && !TYPES[propSpecs.type](userInput[prop])
+        ) {
+          throw new Error(`${errorPrefix} \`${prop}\` must be a ${propSpecs.type}`)
+        }
+
+        if (propSpecs.assign !== false) {
+          this[prop] = userInput[prop]
+        }
+      } else {
+        if (propSpecs.required) {
+          throw new Error(`${errorPrefix} \`${prop}\` is required`)
+        }
+      }
+    }
+  }
+
 
   /**
   * @constructor
@@ -102,7 +143,7 @@ export default class Backinfront {
   * @param {string} options.databaseName
   * @param {Array<object>} options.stores - list of store's configurations
   * @param {Array<object>} options.router - list of store's configurations
-  * @param {function} options.authToken - must return a JWT to authenticate populate & sync requests
+  * @param {false | function} options.authentication - must return a JWT to authenticate populate & sync requests
   * @param {string} options.populateUrl - part of url corresponding to the populate endpoint
   * @param {string} [options.syncUrl] - part of url corresponding to the sync endpoint
   * @param {function} [options.routeState] - must return an object with data available on every offline handled requests
@@ -118,66 +159,32 @@ export default class Backinfront {
   */
   constructor (options = {}) {
     // Throw an error if user input does not match the spec
-    checkUserInput(options, {
-      databaseName: { type: 'string', required: true },
-      stores: { type: 'array', required: true },
-      routers: { type: 'array', required: true },
-      syncUrl: { type: 'string', required: true },
-      populateUrl: { type: 'string', required: true },
-      authToken: { type: 'function' },
-      routeState: { type: 'function' },
-      formatDataBeforeSave: { type: 'function' },
-      formatRouteSearchParam: { type: 'function' },
-      formatRoutePathParam: { type: 'function' },
-      onRouteSuccess: { type: 'function' },
-      onRouteError: { type: 'function' },
-      onPopulateSuccess: { type: 'function' },
-      onPopulateError: { type: 'function' },
-      onSyncSuccess: { type: 'function' },
-      onSyncError: { type: 'function' }
-    }, '[Backinfront]')
+    this.#processUserInput({
+      userInput: options,
+      errorPrefix: '[Backinfront]',
+      specifications: {
+        databaseName: { type: 'string', required: true },
+        syncUrl: { type: 'string', required: true },
+        populateUrl: { type: 'string', required: true },
+        stores: { type: 'array', required: true, assign: false }, // Store and router required a specific processing
+        routers: { type: 'array', required: true, assign: false },
+        authentication: { type: ['function', 'boolean'] },
+        routeState: { type: 'function' },
+        formatDataBeforeSave: { type: 'function' },
+        formatRouteSearchParam: { type: 'function' },
+        formatRoutePathParam: { type: 'function' },
+        onRouteSuccess: { type: 'function' },
+        onRouteError: { type: 'function' },
+        onPopulateSuccess: { type: 'function' },
+        onPopulateError: { type: 'function' },
+        onSyncSuccess: { type: 'function' },
+        onSyncError: { type: 'function' }
+      }
+    })
 
-    // Required params
-    this.databaseName = options.databaseName
+    // Specific processing
     this.addStores(options.stores)
     this.addRouters(options.routers)
-    this.syncUrl = options.syncUrl
-    this.populateUrl = options.populateUrl
-
-    // Optional params
-    if ('authToken' in options) {
-      this.authToken = options.authToken
-    }
-    if ('routeState' in options) {
-      this.routeState = options.routeState
-    }
-    if ('formatDataBeforeSave' in options) {
-      this.formatDataBeforeSave = options.formatDataBeforeSave
-    }
-    if ('formatRouteSearchParam' in options) {
-      this.formatRouteSearchParam = options.formatRouteSearchParam
-    }
-    if ('formatRoutePathParam' in options) {
-      this.formatRoutePathParam = options.formatRoutePathParam
-    }
-    if ('onRouteSuccess' in options) {
-      this.onRouteSuccess = options.onRouteSuccess
-    }
-    if ('onRouteError' in options) {
-      this.onRouteError = options.onRouteError
-    }
-    if ('onPopulateSuccess' in options) {
-      this.onPopulateSuccess = options.onPopulateSuccess
-    }
-    if ('onPopulateError' in options) {
-      this.onPopulateError = options.onPopulateError
-    }
-    if ('onSyncSuccess' in options) {
-      this.onSyncSuccess = options.onSyncSuccess
-    }
-    if ('onSyncError' in options) {
-      this.onSyncError = options.onSyncError
-    }
 
     // Handle routes
     self.addEventListener('fetch', (event) => {
@@ -315,7 +322,7 @@ export default class Backinfront {
       const dbUpgrade = await openDB(this.databaseName, databaseVersion + 1, {
         upgrade: (db, oldVersion, newVersion, transaction) => {
           for (const migration of databaseMigrations) {
-            this.#DB_OPERATIONS[migration.type](transaction, migration.params)
+            DB_OPERATIONS[migration.type](transaction, migration.params)
           }
         }
       })
@@ -491,11 +498,13 @@ export default class Backinfront {
       }
     }
 
-    // Set Authorization header for private api
-    const token = await this.authToken()
+    // Set Authorization header
+    if (authentication) {
+      const token = await this.authentication()
 
-    if (token) {
-      requestInit.headers['Authorization'] = `Bearer ${token}`
+      if (token) {
+        requestInit.headers['Authorization'] = `Bearer ${token}`
+      }
     }
 
     // Set body
@@ -605,7 +614,7 @@ export default class Backinfront {
 
     // Try to execute the route action
     let result
-    let errorCode
+    let errorCode = 'NOT_FOUND'
 
     try {
       result = await route.action(ctx, this.stores)
@@ -629,7 +638,7 @@ export default class Backinfront {
     if (result) {
       return new Response(JSON.stringify(result))
     }
-    return new Response(undefined, this.#LOCAL_FETCH_ERRORS[errorCode || 'NOT_FOUND'])
+    return new Response(undefined, this.ROUTE_ERRORS[errorCode])
   }
 
   /**
