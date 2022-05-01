@@ -2,7 +2,7 @@ import QueryLanguage from './QueryLanguage.js'
 
 import isObject from './utils/isObject.js'
 import isArray from './utils/isArray.js'
-import arrayToObject from './utils/arrayToObject.js'
+import arrayToMap from './utils/arrayToMap.js'
 import processUserInput from './utils/processUserInput.js'
 
 
@@ -47,11 +47,10 @@ export default class Store {
   #updateArray (currentData, newData) {
     // TODO: find a way to not hardcode primary key 'id' (will require the store schema)
     // Create or update items
-    const currentDataIds = arrayToObject(currentData, 'id')
+    const currentDataMap = arrayToMap(currentData, 'id')
 
     return newData.map(newItem => {
-      const newItemId = newItem['id']
-      const currentItem = currentDataIds[newItemId]
+      const currentItem = currentDataMap.get(newItem['id'])
 
       return currentItem
         ? this.#updateObject(currentItem, newItem)
