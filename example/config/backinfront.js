@@ -56,10 +56,10 @@ const backinfront = new Backinfront({
     console.info(`[Backinfront][RouteSuccess] ${route.url.href}`, result)
   },
   onPopulateSuccess: () => {
-    console.warn('[Backinfront][SyncSuccess]')
+    console.warn('[Backinfront][PopulateSuccess]')
   },
   onPopulateError: ({ error }) => {
-    console.warn('[Backinfront][SyncError]', error)
+    console.warn('[Backinfront][PopulateError]', error)
   },
   onSyncSuccess: () => {
     console.warn('[Backinfront][SyncSuccess]')
