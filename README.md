@@ -21,7 +21,7 @@
 
 # What is this useful for ?
 
-Backinfront is both the manager of your local database and a router which handles all defined requests locally. If you are building an offline first PWA which needs sync capabilities, Backinfront is probably the tool your are looking for.
+Backinfront is both the manager of your local database and a router which handles requests locally. If you are building an offline first web app which needs sync capabilities, Backinfront is probably the tool your are looking for.
 
 # Changes
 
@@ -35,7 +35,7 @@ If you want to target much older versions of those browsers, you can transpile t
 
 # Installation
 
-Backinfront is designed to work inside a [Service worker](https://developer.mozilla.org/en-US/docs/Web/API/Service_Worker_API) be sure to not use it in window context.
+Backinfront is designed to work inside a [Service worker](https://developer.mozilla.org/en-US/docs/Web/API/Service_Worker_API) make sure to NOT use it in window context.
 
 ```sh
 npm install backinfront
