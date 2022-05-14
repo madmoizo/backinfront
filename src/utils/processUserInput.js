@@ -24,14 +24,14 @@ const TYPES = {
  */
 export default function processUserInput ({ userInput, assign, specifications, onError }) {
   onError ??= (text) => { throw new Error(text) }
- 
+
   for (const [prop, propSpecs] of Object.entries(specifications)) {
     if (prop in userInput) {
       if (
-        isArray(propSpecs.type) && !propSpecs.type.some(type => TYPES[type](userInput[prop]))
-        || isString(propSpecs.type) && !TYPES[propSpecs.type](userInput[prop])
+        (isArray(propSpecs.type) && !propSpecs.type.some(type => TYPES[type](userInput[prop]))) || 
+        (isString(propSpecs.type) && !TYPES[propSpecs.type](userInput[prop]))
       ) {
-        throw new Error(`${errorPrefix} \`${prop}\` must be a ${propSpecs.type}`)
+        onError(`\`${prop}\` must be a ${propSpecs.type}`)
       }
 
       if (propSpecs.assign) {
