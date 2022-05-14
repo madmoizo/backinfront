@@ -9,7 +9,6 @@ import isDate from './utils/isDate.js'
 import parseDate from './utils/parseDate.js'
 import isAfterDate from './utils/isAfterDate.js'
 import getUrlPath from './utils/getUrlPath.js'
-import generateUUID from './utils/generateUUID.js'
 import waitUntil from './utils/waitUntil.js'
 import deduplicateArray from './utils/deduplicateArray.js'
 import processUserInput from './utils/processUserInput.js'
@@ -120,9 +119,11 @@ export default class Backinfront {
   constructor (options = {}) {
     // Throw an error if user input does not match the spec
     processUserInput({
-      errorPrefix: '[Backinfront]',
-      assign: (prop) => this[prop] = options[prop],
       userInput: options,
+      assign: (prop) => this[prop] = options[prop],
+      onError: (message) => {
+        throw new Error(`[Backinfront] ${message}`)
+      },
       specifications: {
         databaseName: { type: 'string', required: true },
         syncUrl: { type: 'string', required: true },
@@ -399,7 +400,7 @@ export default class Backinfront {
   async addToSyncQueue (storeName, primaryKey, transaction) {
     const store = await this.openStore(this.#syncQueueStoreName, transaction)
     await store.add({
-      id: generateUUID(),
+      id: crypto.randomUUID(),
       createdAt: (new Date()).toJSON(),
       modelName: storeName,
       primaryKey: primaryKey

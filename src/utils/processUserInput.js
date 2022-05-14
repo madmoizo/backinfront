@@ -19,10 +19,12 @@ const TYPES = {
  * @param {object} options
  * @param {object} [options.userInput]
  * @param {object} [options.specifications]
- * @param {string} [options.errorPrefix]
+ * @param {function} [options.onError]
  * @param {function} [options.assign]
  */
-export default function processUserInput ({ userInput, errorPrefix, assign, specifications }) {
+export default function processUserInput ({ userInput, assign, specifications, onError }) {
+  onError ??= (text) => { throw new Error(text) }
+ 
   for (const [prop, propSpecs] of Object.entries(specifications)) {
     if (prop in userInput) {
       if (
@@ -38,7 +40,7 @@ export default function processUserInput ({ userInput, errorPrefix, assign, spec
         assign(prop)
       }
     } else if (propSpecs.required) {
-      throw new Error(`${errorPrefix} \`${prop}\` is required`)
+      onError(`\`${prop}\` is required`)
     }
   }
 }
