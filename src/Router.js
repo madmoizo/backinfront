@@ -8,28 +8,28 @@ const ROUTES_PRESETS = {
   create: (storeName) => ({
     method: 'POST',
     pathname: '/',
-    action: async ({ body, transaction }, stores) => {
+    handler: async ({ body, transaction }, stores) => {
       return stores[storeName].create(body, transaction)
     }
   }),
   list: (storeName) => ({
     method: 'GET',
     pathname: '/',
-    action: async ({ transaction }, stores) => {
+    handler: async ({ transaction }, stores) => {
       return stores[storeName].findManyAndCount(null, transaction)
     }
   }),
   retrieve: (storeName) => ({
     method: 'GET',
     pathname: '/:primaryKey',
-    action: async ({ pathParams, transaction }, stores) => {
+    handler: async ({ pathParams, transaction }, stores) => {
       return stores[storeName].findOne(pathParams.primaryKey, transaction)
     }
   }),
   update: (storeName) => ({
     method: 'PUT',
     pathname: '/:primaryKey',
-    action: async ({ pathParams, body, transaction }, stores) => {
+    handler: async ({ pathParams, body, transaction }, stores) => {
       return stores[storeName].update(pathParams.primaryKey, body, transaction)
     }
   })
@@ -85,17 +85,17 @@ export default class Router {
   * @param {object} routeParams
   * @param {string} routeParams.method
   * @param {string} routeParams.pathname
-  * @param {function} routeParams.action
+  * @param {function} routeParams.handler
   */
-  addRoute ({ method, pathname, action }) {
+  addRoute ({ method, pathname, handler }) {
     const urlString = joinPaths(this.baseUrl, pathname)
     const routeRegexp = urlToRegexp(urlString)
 
     this.routes.push({
-      method: method.toUpperCase(),
-      pathname: pathname,
-      action: action,
       specificity: (pathname.split('/').length * 2) - routeRegexp.pathParams.length,
+      method: method.toUpperCase(),
+      pathname,
+      handler,
       ...routeRegexp,
     })
     this.routes.sort((a, b) => b.specificity - a.specificity)
