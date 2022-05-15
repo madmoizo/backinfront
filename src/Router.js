@@ -4,56 +4,58 @@ import urlToRegexp from './utils/urlToRegexp.js'
 import processUserInput from './utils/processUserInput.js'
 
 
-export default class Router {
-  baseUrl
-  routes = []
-  storeName
-  #predefinedRoutes = {
-    'create': {
-      method: 'POST',
-      pathname: '/',
-      action: async ({ body, transaction }, stores) => {
-        return stores[this.storeName].create(body, transaction)
-      }
-    },
-    'list': {
-      method: 'GET',
-      pathname: '/',
-      action: async ({ transaction }, stores) => {
-        return stores[this.storeName].findManyAndCount(null, transaction)
-      }
-    },
-    'retrieve': {
-      method: 'GET',
-      pathname: '/:primaryKey',
-      action: async ({ pathParams, transaction }, stores) => {
-        return stores[this.storeName].findOne(pathParams.primaryKey, transaction)
-      }
-    },
-    'update': {
-      method: 'PUT',
-      pathname: '/:primaryKey',
-      action: async ({ pathParams, body, transaction }, stores) => {
-        return stores[this.storeName].update(pathParams.primaryKey, body, transaction)
-      }
+const ROUTES_PRESETS = {
+  create: (storeName) => ({
+    method: 'POST',
+    pathname: '/',
+    action: async ({ body, transaction }, stores) => {
+      return stores[storeName].create(body, transaction)
     }
-  }
+  }),
+  list: (storeName) => ({
+    method: 'GET',
+    pathname: '/',
+    action: async ({ transaction }, stores) => {
+      return stores[storeName].findManyAndCount(null, transaction)
+    }
+  }),
+  retrieve: (storeName) => ({
+    method: 'GET',
+    pathname: '/:primaryKey',
+    action: async ({ pathParams, transaction }, stores) => {
+      return stores[storeName].findOne(pathParams.primaryKey, transaction)
+    }
+  }),
+  update: (storeName) => ({
+    method: 'PUT',
+    pathname: '/:primaryKey',
+    action: async ({ pathParams, body, transaction }, stores) => {
+      return stores[storeName].update(pathParams.primaryKey, body, transaction)
+    }
+  })
+}
+
+
+export default class Router {
+  baseUrl = ''
+  routes = []
 
   /**
   * @param {object} options
   * @param {string} options.baseUrl
   * @param {string} options.storeName
-  * @param {Array<'create'|'list'|'retrieve'|'update'|object>} options.routes
+  * @param {object} options.routes
   */
   constructor (options = {}) {
     // Throw an error if user input does not match the spec
     processUserInput({
-      errorPrefix: `[Backinfront][Router:${options.baseUrl}]`,
-      assign: (prop) => this[prop] = options[prop],
       userInput: options,
+      assign: (prop) => this[prop] = options[prop],
+      onError: (message) => {
+        throw new Error(`[Backinfront][Router:${options.baseUrl}] ${message}`)
+      },
       specifications: {
         baseUrl: { type: 'string', required: true },
-        storeName: { type: 'string' },
         routes: { type: 'array', assign: (prop) => this.addRoutes(options[prop]) },
       }
     })
@@ -65,10 +67,15 @@ export default class Router {
   */
   addRoutes (routes) {
     for (const route of routes) {
-      if (isObject(route)) {
+      if (
+        'storeName' in route &&
+        'presets' in route
+      ) {
+        for (const preset of route.presets) {
+          this.addRoute(ROUTES_PRESETS[preset](route.storeName))
+        }
+      } else {
         this.addRoute(route)
-      } else if (route in this.#predefinedRoutes && this.storeName) {
-        this.addRoute(this.#predefinedRoutes[route])
       }
     }
   }
