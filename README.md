@@ -249,7 +249,6 @@ indexes: {
 A router object observe the following structure
 
 1. [baseUrl](#baseurl)
-1. [storeName](#storeName)
 1. [routes](#routes)
 
 ### baseUrl
@@ -257,16 +256,10 @@ A router object observe the following structure
 - Description: base url used to prefix routes
 - Type: `string`
 
-### storeName
-
-- Description: Name of the store whichs allows the use of predefined routes
-- Type: `string`
-- Required: only if you use predefined routes
-
 ### routes
 
-- Description: List of routes handled offline (see [Route Object](#route-object) for more details)
-- Type: `Array<Route>`
+- Description: List of routes handled offline (see [Route Object](#route-object) and [Autoroute Object](#autoroute-object) for more details)
+- Type: `Array<Route|Autoroute>`
 
 ## Route object
 
@@ -274,7 +267,7 @@ A Route object observe the following structure
 
 1. [method](#method)
 1. [pathname](#pathname)
-1. [action(ctx,stores)](#actionctxstores)
+1. [handler(ctx,stores)](#handlerctxstores)
 
 ### method
 
@@ -286,13 +279,30 @@ A Route object observe the following structure
 - Description: Part of the url after the [baseUrl](#baseurl). You can specify `pathParams` by prefixing part of the url with `:`
 - Type: `string`
 
-### action(ctx,stores)
+### handler(ctx,stores)
 
 - Description: action to perform
 - Type: `function`
 - params:
   - ctx: `{ state, request, searchParams, pathParams, body, transaction }`
   - stores: object containing all stores with [storeName](#storename) as a key `{ Store1, Store2, Store10 }`
+
+## Autoroute object
+
+An Autoroute object observe the following structure
+
+1. [storeName](#storeName)
+1. [presets](#presets)
+
+### storeName
+
+- Description: Name of a store
+- Type: `string`
+
+### presets
+
+- Description: List of presets names
+- Type: `Array<create|list|retrieve|update>`
 
 # Example
 

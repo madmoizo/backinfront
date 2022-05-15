@@ -1,13 +1,14 @@
 export default {
   baseUrl: 'https://api.example.com/projects',
-  storeName: 'Project',
   routes: [
-    'retrieve',
-    'update',
+    {
+      storeName: 'Project',
+      presets: ['retrieve', 'update']
+    },
     {
       method: 'GET',
       pathname: '/',
-      action: async ({ searchParams }, { Clientfile }) => {
+      handler: async ({ searchParams }, { Clientfile }) => {
         const { limit, offset, search } = searchParams
 
         let where = {}
@@ -48,7 +49,7 @@ export default {
     {
       method: 'GET',
       pathname: '/listUnscheduledProjects',
-      action: async (ctx, { Project }) => {
+      handler: async (ctx, { Project }) => {
         return Project.findMany({
           where: {
             status: 'UNSCHEDULED'
@@ -60,7 +61,7 @@ export default {
     {
       method: 'GET',
       pathname: '/listScheduledProjects',
-      action: async ({ searchParams }, { Project }) => {
+      handler: async ({ searchParams }, { Project }) => {
         const { start, end } = searchParams
 
         return Project.findMany({
@@ -77,7 +78,7 @@ export default {
     {
       method: 'PUT',
       pathname: '/:projectId/accept',
-      action: async ({ pathParams, body, transaction }, { Project }) => {
+      handler: async ({ pathParams, body, transaction }, { Project }) => {
         // if you want to use only one transaction for a list of actions
         // you MUST use the `transaction` member provided by the context
         // in every database method

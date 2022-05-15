@@ -2,14 +2,14 @@ export default {
   baseUrl: 'https://api.example.com/users',
   storeName: 'User',
   routes: [
-    'create',
-    'list',
-    'retrieve',
-    'update',
+    {
+      storeName: 'User',
+      presets: ['create', 'list', 'retrieve', 'update']
+    },
     {
       method: 'GET',
       pathname: '/listDevelopers',
-      action: async (ctx, { User }) => {
+      handler: async (ctx, { User }) => {
         return User.findMany({
           where: {
             $and: [
@@ -24,7 +24,7 @@ export default {
       method: 'GET',
       pathname: '/listAvailableDevelopers',
       // Advanced example of user availability for project assignement
-      action: async ({ searchParams, transaction }, { Project, User }) => {
+      handler: async ({ searchParams, transaction }, { Project, User }) => {
         const { start, end, projectId } = searchParams
 
         const projects = await Project.findMany({

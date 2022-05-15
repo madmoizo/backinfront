@@ -2,14 +2,15 @@ export default {
   baseUrl: 'https://api.example.com/contacts',
   storeName: 'Contact',
   routes: [
-    'create',
-    'retrieve',
-    'update',
+    {
+      storeName: 'Contact',
+      presets: ['create', 'retrieve', 'update']
+    },
     {
       method: 'GET',
       pathname: '/',
       // Advanced example of contact search implementation on multiple fields
-      action: async ({ searchParams }, { Contact }) => {
+      handler: async ({ searchParams }, { Contact }) => {
         const { limit, offset, search } = searchParams
 
         let where = {}
