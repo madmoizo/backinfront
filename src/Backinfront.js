@@ -554,7 +554,6 @@ export default class Backinfront {
       // Remove the first match (the url itself)
       matchs.shift()
       // Map route params
-      // Note: cannot use `in` operator because .match() return an array with custom properties
       for (const [idx, value] of matchs.entries()) {
         ctx.pathParams[route.pathParams[idx]] = this.formatRoutePathParam(value)
       }

@@ -1,5 +1,5 @@
 /**
- * Native function wrapper to know if a value is an array
+ * Native function wrapper to check if a value is an array
  * @param {any} value
  * @return {boolean}
  */

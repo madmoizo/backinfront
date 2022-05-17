@@ -88,15 +88,18 @@ export default class Router {
   * @param {function} routeParams.handler
   */
   addRoute ({ method, pathname, handler }) {
-    const urlString = joinPaths(this.baseUrl, pathname)
-    const routeRegexp = urlToRegexp(urlString)
+    const url = new URL(joinPaths(this.baseUrl, pathname))
+    const pathParams = (url.pathname.match(/:[^/]+/g) ?? []).map(tag => tag.replace(':', ''))
+    const regexp = new RegExp(`^${url.origin}${url.pathname.replace(/:[^/]+/g, '([a-zA-Z0-9-]+)')}$`)
 
     this.routes.push({
-      specificity: (pathname.split('/').length * 2) - routeRegexp.pathParams.length,
+      specificity: (pathname.split('/').length * 2) - pathParams.length,
+      url,
+      pathParams,
+      regexp,
       method: method.toUpperCase(),
       pathname,
-      handler,
-      ...routeRegexp,
+      handler
     })
     this.routes.sort((a, b) => b.specificity - a.specificity)
   }
