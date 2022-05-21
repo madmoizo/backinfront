@@ -1,6 +1,6 @@
 {
   "name": "backinfront",
-  "version": "2.0.1",
+  "version": "2.0.2",
   "description": "A backend for your frontend, which sync!",
   "main": "index.js",
   "module": "index.js",
@@ -12,6 +12,7 @@
   "author": "Matthieu Dambrune <matthieu.dambrune@gmail.com>",
   "license": "ISC",
   "dependencies": {
-    "idb": "^7.0.1"
+    "idb": "^7.0.1",
+    "utilib": "github:madmoizo/utilib"
   }
 }
