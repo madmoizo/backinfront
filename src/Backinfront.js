@@ -150,8 +150,8 @@ export default class Backinfront {
       source: options,
       target: this,
       exceptions: {
-        routers: this.addRouters,
-        stores: this.addStores,
+        routers: (value) => this.addRouters(value),
+        stores: (value) => this.addStores(value)
       }
     })
 

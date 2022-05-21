@@ -1,4 +1,4 @@
-import { joinPaths, typecheck } from 'utilib'
+import { joinPaths, mergeObject, typecheck } from 'utilib'
 import BackinfrontError from './BackinfrontError.js'
 
 
@@ -63,7 +63,7 @@ export default class Router {
       source: option,
       target: this,
       exceptions: {
-        routes: this.addRoutes
+        routes: (value) => this.addRoutes(value)
       }
     })
   }
