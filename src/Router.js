@@ -60,7 +60,7 @@ export default class Router {
     })
 
     mergeObject({
-      source: option,
+      source: options,
       target: this,
       exceptions: {
         routes: (value) => this.addRoutes(value)
