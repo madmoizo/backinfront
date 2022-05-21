@@ -1,7 +1,5 @@
-import isObject from './utils/isObject.js'
-import joinPaths from './utils/joinPaths.js'
-import urlToRegexp from './utils/urlToRegexp.js'
-import processUserInput from './utils/processUserInput.js'
+import { joinPaths, typecheck } from 'utilib'
+import BackinfrontError from './BackinfrontError.js'
 
 
 const ROUTES_PRESETS = {
@@ -48,15 +46,24 @@ export default class Router {
   */
   constructor (options = {}) {
     // Throw an error if user input does not match the spec
-    processUserInput({
-      userInput: options,
-      assign: (prop) => this[prop] = options[prop],
-      onError: (message) => {
-        throw new Error(`[Backinfront][Router:${options.baseUrl}] ${message}`)
-      },
-      specifications: {
-        baseUrl: { type: 'string', required: true },
-        routes: { type: 'array', assign: (prop) => this.addRoutes(options[prop]) },
+    typecheck({
+      error: BackinfrontError,
+      params: {
+        options: {
+          value: options,
+          type: ['object', {
+            baseUrl: { type: 'string', required: true },
+            routes: { type: 'array' },
+          }]
+        }
+      }
+    })
+
+    mergeObject({
+      source: option,
+      target: this,
+      exceptions: {
+        routes: this.addRoutes
       }
     })
   }
@@ -89,7 +96,9 @@ export default class Router {
   */
   addRoute ({ method, pathname, handler }) {
     const url = new URL(joinPaths(this.baseUrl, pathname))
+    // Extract path params from url
     const pathParams = (url.pathname.match(/:[^/]+/g) ?? []).map(tag => tag.replace(':', ''))
+    // replace user defined path params with regex expression
     const regexp = new RegExp(`^${url.origin}${url.pathname.replace(/:[^/]+/g, '([a-zA-Z0-9-]+)')}$`)
 
     this.routes.push({

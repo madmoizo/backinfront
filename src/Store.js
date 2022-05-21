@@ -1,9 +1,6 @@
+import { arrayToMap, isArray, isObject, mergeObject, typecheck } from 'utilib'
+import BackinfrontError from './BackinfrontError.js'
 import QueryLanguage from './QueryLanguage.js'
-
-import isObject from './utils/isObject.js'
-import isArray from './utils/isArray.js'
-import arrayToMap from './utils/arrayToMap.js'
-import processUserInput from './utils/processUserInput.js'
 
 
 export default class Store {
@@ -18,21 +15,25 @@ export default class Store {
   * @param {object} options
   */
   constructor (backinfront, options = {}) {
-    this.#backinfront = backinfront
-
-    // Throw an error if user input does not match the spec
-    processUserInput({
-      userInput: options,
-      assign: (prop) => this[prop] = options[prop],
-      onError: (message) => {
-        throw new Error(`[Backinfront][Store:${options.storeName}] ${message}`)
-      },
-      specifications: {
-        storeName: { type: 'string', required: true },
-        primaryKey: { type: 'string', required: true },
-        indexes: { type: 'object' },
-        beforeCreate: { type: 'function' }
+    typecheck({
+      error: BackinfrontError,
+      params: {
+        options: {
+          value: options,
+          type: ['object', {
+            storeName: { type: 'string', required: true },
+            primaryKey: { type: 'string', required: true },
+            indexes: { type: 'object' },
+            beforeCreate: { type: 'function' }
+          }]
+        }
       }
+    })
+
+    this.#backinfront = backinfront
+    mergeObject({
+      source: options,
+      target: this
     })
   }
 

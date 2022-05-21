@@ -1,17 +1,18 @@
 import { openDB, deleteDB } from 'idb'
-
+import {
+  deduplicateArray,
+  isAfterDate,
+  isArray,
+  isDate,
+  mergeObject,
+  parseDate,
+  typecheck,
+  waitUntil
+} from 'utilib'
+import BackinfrontError from './BackinfrontError.js'
 import QueryLanguage from './QueryLanguage.js'
-import Store from './Store.js'
 import Router from './Router.js'
-
-import isArray from './utils/isArray.js'
-import isDate from './utils/isDate.js'
-import parseDate from './utils/parseDate.js'
-import isAfterDate from './utils/isAfterDate.js'
-import getUrlPath from './utils/getUrlPath.js'
-import waitUntil from './utils/waitUntil.js'
-import deduplicateArray from './utils/deduplicateArray.js'
-import processUserInput from './utils/processUserInput.js'
+import Store from './Store.js'
 
 
 const ROUTE_ERRORS = {
@@ -102,7 +103,7 @@ export default class Backinfront {
   * @param {string} options.databaseName
   * @param {Array<object>} options.stores - list of store's configurations
   * @param {Array<object>} options.router - list of store's configurations
-  * @param {false | function} options.authentication - must return a JWT to authenticate populate & sync requests
+  * @param {function|false} options.authentication - must return a JWT to authenticate populate & sync requests
   * @param {string} options.populateUrl - part of url corresponding to the populate endpoint
   * @param {string} [options.syncUrl] - part of url corresponding to the sync endpoint
   * @param {function} [options.routeState] - must return an object with data available on every offline handled requests
@@ -118,29 +119,39 @@ export default class Backinfront {
   */
   constructor (options = {}) {
     // Throw an error if user input does not match the spec
-    processUserInput({
-      userInput: options,
-      assign: (prop) => this[prop] = options[prop],
-      onError: (message) => {
-        throw new Error(`[Backinfront] ${message}`)
-      },
-      specifications: {
-        databaseName: { type: 'string', required: true },
-        syncUrl: { type: 'string', required: true },
-        populateUrl: { type: 'string', required: true },
-        stores: { type: 'array', required: true, assign: (prop) => this.addStores(options[prop]) },
-        routers: { type: 'array', required: true, assign: (prop) => this.addRouters(options[prop]) },
-        authentication: { type: ['function', 'boolean'] },
-        routeState: { type: 'function' },
-        formatDataBeforeSave: { type: 'function' },
-        formatRouteSearchParam: { type: 'function' },
-        formatRoutePathParam: { type: 'function' },
-        onRouteSuccess: { type: 'function' },
-        onRouteError: { type: 'function' },
-        onPopulateSuccess: { type: 'function' },
-        onPopulateError: { type: 'function' },
-        onSyncSuccess: { type: 'function' },
-        onSyncError: { type: 'function' }
+    typecheck({
+      error: BackinfrontError,
+      params: {
+        options: {
+          value: options,
+          type: ['object', {
+            databaseName: { type: 'string', required: true },
+            syncUrl: { type: 'string', required: true },
+            populateUrl: { type: 'string', required: true },
+            stores: { type: 'array', required: true },
+            routers: { type: 'array', required: true },
+            authentication: { type: ['function', 'false'] },
+            routeState: { type: 'function' },
+            formatDataBeforeSave: { type: 'function' },
+            formatRouteSearchParam: { type: 'function' },
+            formatRoutePathParam: { type: 'function' },
+            onRouteSuccess: { type: 'function' },
+            onRouteError: { type: 'function' },
+            onPopulateSuccess: { type: 'function' },
+            onPopulateError: { type: 'function' },
+            onSyncSuccess: { type: 'function' },
+            onSyncError: { type: 'function' }
+          }]
+        }
+      }
+    })
+
+    mergeObject({
+      source: options,
+      target: this,
+      exceptions: {
+        routers: this.addRouters,
+        stores: this.addStores,
       }
     })
 
@@ -496,10 +507,10 @@ export default class Backinfront {
       fetchResponse = await fetch(fetchRequest)
 
       if (!fetchResponse.ok) {
-        throw new Error('[Backinfront][Fetch] Response status is not ok')
+        throw new BackinfrontError('Fetch: Response status is not ok')
       }
     } catch (error) {
-      throw new Error('[Backinfront][Fetch] Impossible to fetch data')
+      throw new BackinfrontError(`fetch: ${error.message}`)
     }
 
     const serverData = await fetchResponse.json()
@@ -517,11 +528,11 @@ export default class Backinfront {
   * @return {object}
   */
   #findRouteFromRequest (request) {
-    const urlToTest = getUrlPath(new URL(request.url))
+    const url = new URL(request.url)
 
     return this.routes
       .filter(route => request.method === route.method)
-      .find(route => route.regexp.test(urlToTest))
+      .find(route => route.regexp.test(`${url.origin}${url.pathname}`))
   }
 
   /**
@@ -549,7 +560,7 @@ export default class Backinfront {
 
     // Find params
     // .match() return Array or null
-    const matchs = getUrlPath(url).match(route.regexp)
+    const matchs = `${url.origin}${url.pathname}`.match(route.regexp)
     if (matchs) {
       // Remove the first match (the url itself)
       matchs.shift()

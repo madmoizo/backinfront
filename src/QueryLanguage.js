@@ -1,4 +1,5 @@
-import isObject from './utils/isObject.js'
+import { isObject } from 'utilib'
+import BackinfrontError from './BackinfrontError.js'
 
 
 export default class QueryLanguage {
@@ -78,7 +79,7 @@ export default class QueryLanguage {
   */
   static addOperator (operatorName, operatorAction) {
     if (!operatorName.startsWith('$') || operatorName.length === 1) {
-      throw Error('[Backinfront] An operator name must start with $')
+      throw new BackinfrontError('operator\'s name must start with $')
     }
 
     this.#OPERATORS[operatorName] = operatorAction
