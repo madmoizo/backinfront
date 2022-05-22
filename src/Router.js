@@ -1,4 +1,4 @@
-import { joinPaths, mergeObject, typecheck } from 'utilib'
+import { joinPaths, mergeObject, typecheck } from 'utililib'
 import BackinfrontError from './BackinfrontError.js'
 
 
