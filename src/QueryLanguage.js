@@ -1,4 +1,4 @@
-import { isObject } from 'utilib'
+import { isObject } from 'utililib'
 import BackinfrontError from './BackinfrontError.js'
 
 

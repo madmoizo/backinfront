@@ -8,7 +8,7 @@ import {
   parseDate,
   typecheck,
   waitUntil
-} from 'utilib'
+} from 'utililib'
 import BackinfrontError from './BackinfrontError.js'
 import QueryLanguage from './QueryLanguage.js'
 import Router from './Router.js'
@@ -312,8 +312,7 @@ export default class Backinfront {
 
     return waitUntil(() => this.#databaseConfigurationEnded, {
       timeout: 10000,
-      interval: 20,
-      rejectMessage: '[Backinfront] An error occured during database migration',
+      interval: 20
     })
   }
 
