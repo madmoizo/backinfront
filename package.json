@@ -1,6 +1,6 @@
 {
   "name": "backinfront",
-  "version": "2.0.6",
+  "version": "2.0.7",
   "description": "A backend for your frontend, which sync!",
   "author": "Matthieu Dambrune <matthieu.dambrune@gmail.com>",
   "license": "ISC",
@@ -13,6 +13,6 @@
   "scripts": {},
   "dependencies": {
     "idb": "^7.0.1",
-    "utilib": "github:madmoizo/utilib"
+    "utililib": "github:madmoizo/utililib"
   }
 }
