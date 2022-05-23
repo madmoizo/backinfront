@@ -25,6 +25,6 @@ jobs:
         with:
           tag_name: ${{ github.ref }}
           release_name: ${{ github.ref }}
-          body: Please refer to [CHANGELOG.md](https://github.com/madmoizo/backinfront/blob/main/CHANGELOG.md) for details.
+          body: Please refer to [CHANGELOG.md](https://github.com/${{ github.repository }}/blob/main/CHANGELOG.md) for details.
           draft: false
           prerelease: false
