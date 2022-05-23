@@ -10,7 +10,9 @@
   },
   "type": "module",
   "main": "index.js",
-  "scripts": {},
+  "scripts": {
+    "postversion": "git push origin $npm_package_version"
+  },
   "dependencies": {
     "idb": "^7.0.1",
     "utililib": "github:madmoizo/utililib"
