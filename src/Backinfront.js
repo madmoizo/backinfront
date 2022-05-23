@@ -584,7 +584,7 @@ export default class Backinfront {
     let errorCode = 'NOT_FOUND'
 
     try {
-      result = await route.action(ctx, this.stores)
+      result = await route.handler(ctx, this.stores)
 
       // Progressive ehancement: commit not supported by safari on iOS (last check: 15/09/21)
       ctx.transaction?.commit?.()
