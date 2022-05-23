@@ -11,7 +11,7 @@
   "type": "module",
   "main": "index.js",
   "scripts": {
-    "postversion": "git push && git push --fllow-tags"
+    "postversion": "git push && git push --follow-tags"
   },
   "dependencies": {
     "idb": "^7.0.1",
