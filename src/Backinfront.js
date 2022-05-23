@@ -120,29 +120,26 @@ export default class Backinfront {
   constructor (options = {}) {
     // Throw an error if user input does not match the spec
     typecheck({
-      error: BackinfrontError,
-      params: {
-        options: {
-          value: options,
-          type: ['object', {
-            databaseName: { type: 'string', required: true },
-            syncUrl: { type: 'string', required: true },
-            populateUrl: { type: 'string', required: true },
-            stores: { type: 'array', required: true },
-            routers: { type: 'array', required: true },
-            authentication: { type: ['function', 'false'] },
-            routeState: { type: 'function' },
-            formatDataBeforeSave: { type: 'function' },
-            formatRouteSearchParam: { type: 'function' },
-            formatRoutePathParam: { type: 'function' },
-            onRouteSuccess: { type: 'function' },
-            onRouteError: { type: 'function' },
-            onPopulateSuccess: { type: 'function' },
-            onPopulateError: { type: 'function' },
-            onSyncSuccess: { type: 'function' },
-            onSyncError: { type: 'function' }
-          }]
-        }
+      options: {
+        value: options,
+        type: ['object', {
+          databaseName: { type: 'string', required: true },
+          syncUrl: { type: 'string', required: true },
+          populateUrl: { type: 'string', required: true },
+          stores: { type: 'array', required: true },
+          routers: { type: 'array', required: true },
+          authentication: { type: ['function', 'false'] },
+          routeState: { type: 'function' },
+          formatDataBeforeSave: { type: 'function' },
+          formatRouteSearchParam: { type: 'function' },
+          formatRoutePathParam: { type: 'function' },
+          onRouteSuccess: { type: 'function' },
+          onRouteError: { type: 'function' },
+          onPopulateSuccess: { type: 'function' },
+          onPopulateError: { type: 'function' },
+          onSyncSuccess: { type: 'function' },
+          onSyncError: { type: 'function' }
+        }]
       }
     })
 

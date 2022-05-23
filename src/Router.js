@@ -47,15 +47,12 @@ export default class Router {
   constructor (options = {}) {
     // Throw an error if user input does not match the spec
     typecheck({
-      error: BackinfrontError,
-      params: {
-        options: {
-          value: options,
-          type: ['object', {
-            baseUrl: { type: 'string', required: true },
-            routes: { type: 'array' },
-          }]
-        }
+      options: {
+        value: options,
+        type: ['object', {
+          baseUrl: { type: 'string', required: true },
+          routes: { type: 'array' },
+        }]
       }
     })
 

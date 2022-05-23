@@ -16,17 +16,14 @@ export default class Store {
   */
   constructor (backinfront, options = {}) {
     typecheck({
-      error: BackinfrontError,
-      params: {
-        options: {
-          value: options,
-          type: ['object', {
-            storeName: { type: 'string', required: true },
-            primaryKey: { type: 'string', required: true },
-            indexes: { type: 'object' },
-            beforeCreate: { type: 'function' }
-          }]
-        }
+      options: {
+        value: options,
+        type: ['object', {
+          storeName: { type: 'string', required: true },
+          primaryKey: { type: 'string', required: true },
+          indexes: { type: 'object' },
+          beforeCreate: { type: 'function' }
+        }]
       }
     })
 
