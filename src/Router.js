@@ -1,5 +1,4 @@
 import { joinPaths, mergeObject, typecheck } from 'utililib'
-import BackinfrontError from './BackinfrontError.js'
 
 
 const ROUTES_PRESETS = {
@@ -35,6 +34,7 @@ const ROUTES_PRESETS = {
 
 
 export default class Router {
+  origin = ''
   baseUrl = ''
   routes = []
 
@@ -63,6 +63,8 @@ export default class Router {
         routes: (value) => this.addRoutes(value)
       }
     })
+
+    this.origin = new URL(this.baseUrl).origin
   }
 
   /**
@@ -107,6 +109,5 @@ export default class Router {
       pathname,
       handler
     })
-    this.routes.sort((a, b) => b.specificity - a.specificity)
   }
 }
