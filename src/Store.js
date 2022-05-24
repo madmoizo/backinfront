@@ -1,5 +1,4 @@
 import { arrayToMap, isArray, isObject, mergeObject, typecheck } from 'utililib'
-import BackinfrontError from './BackinfrontError.js'
 import QueryLanguage from './QueryLanguage.js'
 
 
