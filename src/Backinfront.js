@@ -1,6 +1,7 @@
 import { openDB, deleteDB } from 'idb'
 import {
   deduplicateArray,
+  has,
   isAfterDate,
   isArray,
   isDate,
@@ -83,7 +84,7 @@ export default class Backinfront {
       }
     }
   }
-  routes = []
+  routes = {}
   stores = {}
   authentication = false
   routeState = () => null
@@ -526,8 +527,7 @@ export default class Backinfront {
   #findRouteFromRequest (request) {
     const url = new URL(request.url)
 
-    return this.routes
-      .filter(route => request.method === route.method)
+    return this.routes[url.origin]?.filter(route => request.method === route.method)
       .find(route => route.regexp.test(`${url.origin}${url.pathname}`))
   }
 
@@ -622,7 +622,9 @@ export default class Backinfront {
   */
   addStore (storeParams) {
     const store = new Store(this, storeParams)
+    // Add the store to the hashtable
     this.stores[store.storeName] = store
+    // Add the store to the database schema
     this.#databaseSchema[store.storeName] = {}
     if (store.primaryKey) {
       this.#databaseSchema[store.storeName].keyPath = store.primaryKey
@@ -651,10 +653,17 @@ export default class Backinfront {
   */
   addRouter (routerParams) {
     const router = new Router(routerParams)
-    // Add router's routes to the global list
-    this.routes.push(...router.routes)
+
+    // Add the origin if new
+    if (!has(this.routes, router.origin)) {
+      this.routes[router.origin] = []
+    }
+    // Add routes to the origin list
+    for (const route of router.routes) {
+      this.routes[router.origin].push(route)
+    }
     // Routes must be reordered by specificity
-    this.routes.sort((a, b) => b.specificity - a.specificity)
+    this.routes[router.origin].sort((a, b) => b.specificity - a.specificity)
 
     return router
   }
