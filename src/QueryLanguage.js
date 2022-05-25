@@ -92,44 +92,36 @@ export default class QueryLanguage {
   * @return {boolean}
   */
   static isConditionValid (condition, row) {
-    // No condition is always valid
-    if (!isObject(condition)) {
-      return true
-    }
-
-    for (const conditionName in condition) {
-      const conditionValue = condition[conditionName]
-
-      // Logic operators
-      if (conditionName === '$or') {
-        return conditionValue.some(nestedCondition => this.isConditionValid(nestedCondition, row))
-      }
-      if (conditionName === '$and') {
-        return conditionValue.every(nestedCondition => this.isConditionValid(nestedCondition, row))
-      }
-
-      // Support dot notation for nested field
-      let storeValue
-      try {
-        storeValue = conditionName
-          .split('.')
-          .reduce((accu, current) => accu[current], row)
-      } catch (error) {
-        return false
-      }
-
-      // Build test
-      if (isObject(conditionValue)) {
-        for (const operator in conditionValue) {
-          if (!this.#OPERATORS[operator](storeValue, conditionValue[operator])) {
-            return false
-          }
+    if (isObject(condition)) {
+      return Object.entries(condition).every(([conditionName, conditionValue]) => {
+        // Logic operators
+        if (conditionName === '$or') {
+          return conditionValue.some(nestedCondition => this.isConditionValid(nestedCondition, row))
         }
-        return true
-      }
+        if (conditionName === '$and') {
+          return conditionValue.every(nestedCondition => this.isConditionValid(nestedCondition, row))
+        }
 
-      // Default case is for equality check
-      return this.#OPERATORS.$equal(storeValue, conditionValue)
+        // Support dot notation for nested field
+        let storeValue
+        try {
+          storeValue = conditionName
+            .split('.')
+            .reduce((accu, current) => accu[current], row)
+        } catch (error) {
+          return false
+        }
+
+        // Build test
+        if (isObject(conditionValue)) {
+          return Object.entries(conditionValue).every(([operator, operatorValue]) => {
+            return this.#OPERATORS[operator](storeValue, operatorValue)
+          })
+        }
+
+        // Default case is for equality check
+        return this.#OPERATORS.$equal(storeValue, conditionValue)
+      })
     }
 
     return true
