@@ -143,7 +143,7 @@ backinfront.populate(storeNames: Array<string>)
     },
     body: [
       {
-        updatedAt,
+        createdAt,
         storeName,
         primaryKey,
         data
@@ -153,26 +153,29 @@ backinfront.populate(storeNames: Array<string>)
   Response
   [
     {
-      updatedAt,
+      createdAt,
       storeName,
       primaryKey,
       data
     }, ...
   ]
-  Note: the best practice is the sending of a periodic message from your window context which calls this function
+  Note: 
+  The recommended way to use the sync capability is to send a message periodically 
+  from the window context which will trigger this function
 */
 backinfront.sync()
 
 /*
   Destroy the local database
   Sometimes, it can be convenient to clear the local data (on user logout for example).
-  The database will be destroyed so you must ensure to stop your sync loop and manually call the sync function a last time before calling this function
+  The database will be destroyed so you must ensure to stop your sync loop
+  and manually call the sync function a last time before calling destroy.
 */
 backinfront.destroy()
 
 
 //
-// Stores provide a useful api which allows the user to manipulate data  
+// Stores provide a useful api which allows local data manipulation
 //
 const store = backinfront.stores[storeName]
 
