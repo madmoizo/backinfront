@@ -212,11 +212,11 @@ export default class Store {
   }
 
   /**
-  * Destroy one item
+  * Delete one item
   * @param {string} primaryKeyValue
   * @param {IDBTransaction} transaction
   */
-  async destroy (primaryKeyValue, transaction = null) {
+  async delete (primaryKeyValue, transaction = null) {
     const store = await this.#backinfront.openStore(this.storeName, transaction || 'readwrite')
     await store.delete(primaryKeyValue)
   }
