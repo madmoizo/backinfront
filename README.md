@@ -1,6 +1,4 @@
-
-![Logo](/docs/logo.png?raw=true)
-
+![Logo](/static/logo.png?raw=true)
 
 # Backinfront
 
@@ -8,14 +6,7 @@
 2. [Changes](#changes)
 3. [Browser support](#browser-support)
 4. [Installation](#installation)
-5. [API](#api)
-   1. [`new Backinfront(options)`](#new-backinfrontoptions)
-   1. [`backinfront.populate(storeNames)`](#backinfrontpopulatestoreNames)
-   1. [`backinfront.sync()`](#backinfrontsync)
-   1. [`backinfront.destroy()`](#backinfrontdestroy)
-   1. [`Store object`](#store-object)
-   1. [`Router object`](#router-object)
-   1. [`Route object`](#route-object)
+5. [Usage](#api)
 6. [Example](#example)
 
 
@@ -35,275 +26,216 @@ If you want to target much older versions of those browsers, you can transpile t
 
 # Installation
 
-Backinfront is designed to work inside a [Service worker](https://developer.mozilla.org/en-US/docs/Web/API/Service_Worker_API) make sure to NOT use it in window context.
-
 ```sh
 npm install backinfront
 ```
 
-# API
+# Usage
 
-## new Backinfront(options)
+Backinfront is designed to work inside a [Service worker](https://developer.mozilla.org/en-US/docs/Web/API/Service_Worker_API) make sure to NOT use it in window context.
 
-Backinfront accepts a range of options described below
-
-1. [databaseName](#databasename)
-1. [stores](#stores)
-1. [routers](#routers)
-1. [authentication()](#authentication)
-1. [populateUrl](#populateurl)
-1. [syncUrl](#syncurl)
-1. [routeState(request)](#routestaterequest)
-1. [formatDataBeforeSave(data)](#formatdatabeforesavedata)
-1. [formatRouteSearchParam(searchParam)](#formatroutesearchparamsearchparam)
-1. [formatRoutePathParam(pathParam)](#formatroutepathparampathparam)
-1. [onRouteSuccess(options)](#onroutesuccessoptions)
-1. [onRouteError(options)](#onrouteerroroptions)
-1. [onPopulateSuccess()](#onpopulatesuccess)
-1. [onPopulateError(options)](#onpopulateerroroptions)
-1. [onSyncSuccess()](#onsyncsuccess)
-1. [onSyncError(options)](#onsyncerroroptions)
-
-### databaseName
-
-- Description: Name of the indexedDB database
-- Type: `string`
-- Required
-
-### stores
-
-- Description: List of store objects (see [Store object](#storeobject) for more details)
-- Type: `Array<object>`
-- Default: []
-
-### routers
-
-- Description: List of router objects (see [Router object](#routerobject) for more details)
-- Type: `Array<object>`
-- Default: []
-
-### authentication()
-
-- Description: Provides a JWT to authenticate requests on the server
-- Type: `function` | `false`
-- params: none
-- return: `string`
-
-### populateUrl
-
-- Description: url used for database population
-- Type: `string`
-
-### syncUrl
-
-- Description: url used for database synchronization
-- Type: `string`
-
-### routeState(request)
-
-- Description: Data globally available for all handled requests
-- Type: `function`
-- params:
-  - `request`: [`Request`](https://developer.mozilla.org/en-US/docs/Web/API/Request/Request)
-- return: `object`
-
-### formatDataBeforeSave(data)
-
-- Description: Formats data just before the insertion
-- Type: `function`
-- params:
-  - `data`: object
-- return: `object`
-
-### formatRouteSearchParam(searchParam)
-
-- Description: Format search params of a request handled offline
-- Type: `function`
-- params:
-  - `value`: string
-- return: `string`
-- example: format date string into Date object
-
-### formatRoutePathParam(pathParam)
-
-- Description: Format path params of a request handled offline
-- Type: `function`
-- params:
-  - `value`: string
-- return: `string`
-
-### onRouteSuccess(options)
-
-- Description: Hook triggered after a successful offline request
-- Type: `function`
-- params:
-  - `options.route`: `object`
-  - `options.result`: `object | Array<object>`
-- return: void
-
-### onRouteError(options)
-
-- Description: Hook triggered after a successful offline request
-- Type: `function`
-- params:
-  - `options.route`: `object`
-  - `options.error`: [`Error`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Error)
-- return: void
-
-### onPopulateSuccess()
-
-- Description: Hook triggered after a successful database initial population
-- Type: `function`
-- params: none
-- return: void
-
-### onPopulateError(options)
-
-- Description: Hook triggered after a failure during database initial population
-- Type: `function`
-- params:
-  - `options.error`: [`Error`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Error)
-- return: void
-
-### onSyncSuccess()
-
-- Description: Hook triggered after a successful database synchronization
-- Type: `function`
-- params: none
-- return: void
-
-### onSyncError(options)
-
-- Description: Hook triggered after a failure during database synchronization
-- Type: `function`
-- params:
-  - `options.error`: [`Error`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Error)
-- return: void
-
-
-## backinfront.populate(storeNames)
-
-`populate` sends a `GET` request to the [`populateEndpoint`](#populateendpoint) with a `modelNames` search param which contains the list of models you want to populate.
-The server must return an object which match the structure below:
 ```js
-{
-  storeName1: [item1, item2, ..., itemX],
-  storeName2: [item1, item2, ..., itemX],
-  ...
-}
+import Backinfront from 'backinfront'
+
+
+const backinfront = new Backinfront({
+  // Name of the indexedDB database
+  databaseName: string,
+  // List of stores
+  stores: Array<{
+    // Name of the store
+    storeName: string,
+    // Name of the primaryKey
+    primaryKey: string,
+    // List of indexes
+    indexes: {
+      [indexName: string]: string | Array<string>
+    }
+  }>,
+  // List of routers
+  routers: Array<{
+    baseUrl: string,
+    routes: Array<{
+        // Method of the request
+        method: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE',
+        // Part of the url after the `baseUrl`
+        // You can specify a `pathParam` by prefixing part of the url with `:`
+        pathname: string,
+        // Action performed locally
+        handler(
+          context: {
+            request: Request,
+            transaction: IDBTransaction,
+            // Date returned by `routeState` function
+            state: { [globalData: string]: any },
+            // Search param after being formatted by `formatRouteSearchParam`
+            searchParams: { [searchParams: string]: string | any },
+            // Path param after being formatted by `formatRoutePathParam`
+            pathParams: { [pathParam: string]: string | any },
+            // Body of the request (null if method is GET)
+            body: null | object | Array<object>
+          },
+          stores: {
+            [storeName: string]: Store
+          }
+        ): object | Array<object>
+      } | {
+        // Name of a store
+        storeName: string,
+        // Preset routes
+        presets: Array<'create' | 'list' | 'retrieve' | 'update'>
+      }
+    >
+  }>,
+  // URL used for database population
+  populateUrl: string,
+  // URL used for database synchronization
+  syncUrl: string,
+  // Provides a JWT to authenticate requests on the server
+  authentication?: false,
+  authentication?(): string,
+  // Add data to context of offline handled routes
+  routeState?(request: Request): object,
+  // Formats data just before the insertion
+  formatDataBeforeSave?(data: object): object,
+  // Format a search param of a request handled offline
+  // Example: convert date string to Date, comma separated list to Array, ...
+  formatRouteSearchParam?(searchParam: string): any,
+  // Format path params of a request handled offline
+  formatRoutePathParam?(pathParam: string): any,
+  // Hook triggered after a successful offline request
+  onRouteSuccess?({ route: object, result: object | Array<object> }): void,
+  // Hook triggered after a failed offline request
+  onRouteError?({ route: object, error: Error }): void,
+  // Hook triggered after a successful database initial population
+  onPopulateSuccess?(): void,
+  // Hook triggered after a failure during database initial population
+  onPopulateError?({ error: Error }): void,
+  // Hook triggered after a successful database synchronization
+  onSyncSuccess?(): void,
+  // Hook triggered after a failure during database synchronization
+  onSyncError?({ error: Error }): void
+})
+
+/*
+  Perform a fetch request to the `populateUrl`
+  Request
+  {
+    method: 'GET',
+    searchParams: {
+      storeNames: ['storename1', ... , 'storeNameX']
+    }
+  }
+  Response expected from the server
+  {
+    storeName1: [item1, ..., itemX],
+    ...,
+    storeNameX: [item1, ..., itemX],
+  }
+*/
+backinfront.populate(storeNames: Array<string>)
+
+/*
+  Perform a fetch request to the `syncUrl`
+  Request
+  {
+    method: 'POST',
+    searchParams: {
+      lastChangeAt // date of the last object returned by the server
+    },
+    body: [
+      {
+        updatedAt,
+        storeName,
+        primaryKey,
+        data
+      }, ...
+    ]
+  }
+  Response
+  [
+    {
+      updatedAt,
+      storeName,
+      primaryKey,
+      data
+    }, ...
+  ]
+  Note: the best practice is the sending of a periodic message from your window context which calls this function
+*/
+backinfront.sync()
+
+/*
+  Destroy the local database
+  Sometimes, it can be convenient to clear the local data (on user logout for example).
+  The database will be destroyed so you must ensure to stop your sync loop and manually call the sync function a last time before calling this function
+*/
+backinfront.destroy()
+
+
+//
+// Stores provide a useful api which allows the user to manipulate data  
+//
+const store = backinfront.stores[storeName]
+
+// Delete all elements from the store
+await store.clear(transaction?: IDBTransaction)
+// Delete the element matching the primaryKey value from the store
+await store.delete(primaryKeyValue: any, transaction?: IDBTransaction)
+// Add a new item to the store
+await store.create(data: object, transaction?: IDBTransaction)
+// Update an existing item from the store
+await store.update(primaryKeyValue: any, data: object, transaction?: IDBTransaction)
+// Count the total of items in the store
+await store.count(transaction?: IDBTransaction)
+// Find an item by it's primaryKey value
+await store.findOne(primaryKeyValue, transaction?: IDBTransaction)
+// Find a list of items matching the provided condition
+await store.findManyAndCount(condition?: object, transaction?: IDBTransaction)
+await store.findMany(condition?: object, transaction?: IDBTransaction)
+
+//
+// To build the `condition` used by findMany and findManyAndCount
+// You can use the powerful query language provided by the lib
+//
+await store.findManyAndCount({
+  where: {
+    // $and & $or expect an array of condition 
+    $or: [
+      { $and: [] },
+      { $and: [] }
+    ],
+    // $and is implicit when there are multiples conditions side by side
+    property1: value1,
+    property2: value2,
+    // But you can use it if you want to
+    $and: [
+      { property1: value1 },
+      { property2: value2 }
+    ]
+    // Dot notation is also supported to access nested object
+    'grandma.mum.me': value
+    // List of operators
+    property: value, // 1
+    property: { $equal: value }, // equivalent to 1
+    property: { $gt: value },
+    property: { $gte: value },
+    property: { $lt: value },
+    property: { $lte: value },
+    property: { $in: [value1, ...,  valueX] },
+    property: { $notin: [value1, ..., valueX] },
+    property: { $like: [normalize, value] }, // use normalize function to apply a transformation to value & store value
+    property: { $some: (element) => element === value }, // will always return false if the store value is not an array
+    property: { $function: (storeValue) => storeValue === value } // This example reproduce $equal condition
+  },
+  limit: number,
+  offset: number,
+  // You can only order by an existing index
+  order: ['indexName', 'DESC'] 
+})
 ```
-For performance purpose, don't call `populateDB` with the full list of stores but split it up in multiple calls
-
-## backinfront.sync()
-
-`sync` sends a `POST` request to the [`syncEndpoint`](#syncendpoint).
-The `body` is an `array` of `objects` with the following structure:
-```js
-{
-  createdAt,  // date of the modification
-  modelName,  // storeName
-  primaryKey, // primaryKey of the modified object
-  data        // the modified object itself
-}
-```
-The modified data returned by the server must conform to this data structure as well.
-To help you return the modified data from the server, the request provide a dedicated search param `lastChangeAt` which match the date of the last object returned by the server.
-
-
-## backinfront.destroy()
-
-Sometimes, it can be convenient to clear the local data (on user logout for example). The database will be destroyed so you must ensure to stop your sync loop and manually sync a last time before calling `destroy`
-
-## Store object
-
-A store object observe the following structure
-
-1. [storeName](#storeName)
-1. [primaryKey](#primaryKey)
-1. [indexes](#indexes)
-
-### storeName
-
-- Description: Name of the store
-- Type: `string`
-
-### primaryKey
-
-- Description: Name of the primaryKey
-- Type: `string` | `Array<string>`
-
-### indexes
-
-- Description: List of indexes
-- Type: `object`
-- Example:
-```js
-indexes: {
-  indexName1: indexKey1
-  indexName2: [indexKey2, indexKey3]
-}
-```
-
-## Router object
-
-A router object observe the following structure
-
-1. [baseUrl](#baseurl)
-1. [routes](#routes)
-
-### baseUrl
-
-- Description: base url used to prefix routes
-- Type: `string`
-
-### routes
-
-- Description: List of routes handled offline (see [Route Object](#route-object) and [Autoroute Object](#autoroute-object) for more details)
-- Type: `Array<Route|Autoroute>`
-
-## Route object
-
-A Route object observe the following structure
-
-1. [method](#method)
-1. [pathname](#pathname)
-1. [handler(ctx,stores)](#handlerctxstores)
-
-### method
-
-- Description: method of the request
-- Type: `GET | PUT | POST | PATCH | DELETE`
-
-### pathname
-
-- Description: Part of the url after the [baseUrl](#baseurl). You can specify `pathParams` by prefixing part of the url with `:`
-- Type: `string`
-
-### handler(ctx,stores)
-
-- Description: action to perform
-- Type: `function`
-- params:
-  - ctx: `{ state, request, searchParams, pathParams, body, transaction }`
-  - stores: object containing all stores with [storeName](#storename) as a key `{ Store1, Store2, Store10 }`
-
-## Autoroute object
-
-An Autoroute object observe the following structure
-
-1. [storeName](#storeName)
-1. [presets](#presets)
-
-### storeName
-
-- Description: Name of a store
-- Type: `string`
-
-### presets
-
-- Description: List of presets names
-- Type: `Array<create|list|retrieve|update>`
 
 # Example
 
-What is better than [a real example](/example) to show the full capabilities of Backinfront?
+You are at the end of the doc and something is still unclear? 
+What is better than [a real example](/example) to show you the full capabilities of Backinfront !
