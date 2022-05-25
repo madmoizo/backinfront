@@ -87,6 +87,8 @@ export default class Backinfront {
   routes = {}
   stores = {}
   authentication = false
+  collectionCountKey = 'count'
+  collectionDataKey = 'rows'
   routeState = () => null
   formatRouteSearchParam = (value) => value
   formatRoutePathParam = (value) => value
@@ -104,9 +106,11 @@ export default class Backinfront {
   * @param {string} options.databaseName
   * @param {Array<object>} options.stores - list of store's configurations
   * @param {Array<object>} options.router - list of store's configurations
-  * @param {function|false} options.authentication - must return a JWT to authenticate populate & sync requests
   * @param {string} options.populateUrl - part of url corresponding to the populate endpoint
-  * @param {string} [options.syncUrl] - part of url corresponding to the sync endpoint
+  * @param {string} options.syncUrl - part of url corresponding to the sync endpoint
+  * @param {function|false} [options.authentication] - must return a JWT to authenticate populate & sync requests
+  * @param {function} [options.collectionCountKey]
+  * @param {function} [options.collectionDataKey]
   * @param {function} [options.routeState] - must return an object with data available on every offline handled requests
   * @param {function} [options.formatDataBeforeSave] - format data before insertion into indexeddb
   * @param {function} [options.formatRouteSearchParam] - format Request's search params (example: transform comma separated string into array)
@@ -125,11 +129,13 @@ export default class Backinfront {
         value: options,
         type: ['object', {
           databaseName: { type: 'string', required: true },
-          syncUrl: { type: 'string', required: true },
-          populateUrl: { type: 'string', required: true },
           stores: { type: 'array', required: true },
           routers: { type: 'array', required: true },
+          syncUrl: { type: 'string', required: true },
+          populateUrl: { type: 'string', required: true },
           authentication: { type: ['function', 'false'] },
+          collectionCountKey: { type: 'string' },
+          collectionDataKey: { type: 'string' },
           routeState: { type: 'function' },
           formatDataBeforeSave: { type: 'function' },
           formatRouteSearchParam: { type: 'function' },

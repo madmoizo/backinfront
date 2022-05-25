@@ -1,5 +1,6 @@
 import { arrayToMap, isArray, isObject, mergeObject, typecheck } from 'utililib'
 import QueryLanguage from './QueryLanguage.js'
+import BackinfrontError from './BackinfrontError.js'
 
 
 export default class Store {
@@ -122,54 +123,50 @@ export default class Store {
   async findManyAndCount (condition = null, transaction = null) {
     const store = await this.#backinfront.openStore(this.storeName, transaction || 'readonly')
 
-    if (!condition) {
-      const rows = await store.getAll()
-      const count = rows.length
-
-      return {
-        rows,
-        count
-      }
-    }
-
-    const limit = parseInt(condition.limit) || null
-    const offset = parseInt(condition.offset) || null
-    const rows = []
+    let rows = []
     let count = 0
 
-    // Initialize cursor params
-    let index = store
-    let direction = 'next'
+    if (!condition) {
+      rows = await store.getAll()
+      count = rows.length
+    } else {
+      const limit = parseInt(condition.limit) || null
+      const offset = parseInt(condition.offset) || null
 
-    if (condition.order) {
-      index = store.index(condition.order[0])
+      // Initialize cursor params
+      let index = store
+      let direction = 'next'
 
-      if (condition.order[1] === 'DESC') {
-        direction = 'prev'
-      }
-    }
+      if (condition.order) {
+        index = store.index(condition.order[0])
 
-    let cursor = await index.openCursor(null, direction)
-
-    // Cursor iteration
-    while (cursor) {
-      if (QueryLanguage.isConditionValid(condition.where, cursor.value)) {
-        count += 1
-
-        if (
-          (limit === null || limit > rows.length) &&
-          (offset === null || offset < count)
-        ) {
-          rows.push(cursor.value)
+        if (condition.order[1] === 'DESC') {
+          direction = 'prev'
         }
       }
 
-      cursor = await cursor.continue()
+      let cursor = await index.openCursor(null, direction)
+
+      // Cursor iteration
+      while (cursor) {
+        if (QueryLanguage.isConditionValid(condition.where, cursor.value)) {
+          count += 1
+
+          if (
+            (limit === null || limit > rows.length) &&
+            (offset === null || offset < count)
+          ) {
+            rows.push(cursor.value)
+          }
+        }
+
+        cursor = await cursor.continue()
+      }
     }
 
     return {
-      rows,
-      count
+      [this.#backinfront.collectionCountKey]: count,
+      [this.#backinfront.collectionDataKey]: rows
     }
   }
 
@@ -195,7 +192,7 @@ export default class Store {
     if (isObject(primaryKeyValue)) {
       const rows = await this.findMany(primaryKeyValue, transaction)
       if (rows.length > 1) {
-        throw new Error(`[Backinfront][findOne] Expecting one result, ${rows.length} found`)
+        throw new BackinfrontError(`findOne: Expecting one result, ${rows.length} found`)
       }
       return rows[0]
     }
@@ -272,10 +269,10 @@ export default class Store {
     const store = await this.#backinfront.openStore(this.storeName, transaction)
     // Check the consistency
     if (!(this.primaryKey in data)) {
-      throw new Error('[Backinfront][update] data param must include the primaryKey')
+      throw new BackinfrontError('update: data param must include the primaryKey')
     }
     if (primaryKeyValue !== data[this.primaryKey]) {
-      throw new Error('[Backinfront][update] primary key provided in `update` does not match with data')
+      throw new BackinfrontError('update: primary key provided in `update` does not match with data')
     }
     // Compare field by field recursively
     const item = await store.get(primaryKeyValue)
