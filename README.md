@@ -3,9 +3,9 @@
 # Backinfront
 
 1. [What is this useful for ?](#what-is-this-useful-for-)
-2. [Changes](#changes)
 3. [Browser support](#browser-support)
 4. [Installation](#installation)
+2. [Changes](#changes)
 5. [Usage](#api)
 6. [Example](#example)
 
@@ -14,15 +14,13 @@
 
 Backinfront is both the manager of your local database and a router which handles requests locally. If you are building an offline first web app which needs sync capabilities, Backinfront is probably the tool your are looking for.
 
-# Changes
-
-[See details of changes](CHANGELOG.md).
-
 # Browser support
 
-This library targets modern browsers, as in Chrome, Firefox, Safari, and other browsers that use those engines, such as Edge. IE is not supported.
+This library targets modern browsers, as in Chrome, Firefox, Safari, and other browsers that use those engines, such as Edge. IE is not supported. If you have to target much older versions of those browsers, you can still use a transpiler.
 
-If you want to target much older versions of those browsers, you can transpile the library using something like [Babel](https://babeljs.io/).
+# Changes
+
+See the [CHANGELOG](CHANGELOG.md) to be the first to use new features and to stay up to date with breaking changes
 
 # Installation
 
