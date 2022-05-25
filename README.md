@@ -12,7 +12,7 @@
 
 # What is this useful for ?
 
-Backinfront is both the manager of your local database and a router which handles requests locally. If you are building an offline first web app which needs sync capabilities, Backinfront is probably the tool your are looking for.
+Backinfront is both the manager of your browser database and a router which handles requests locally. If you are building an offline first web app which needs sync capabilities, Backinfront is probably the tool your are looking for.
 
 # Browser support
 
@@ -20,7 +20,7 @@ This library targets modern browsers, as in Chrome, Firefox, Safari, and other b
 
 # Changes
 
-See the [CHANGELOG](CHANGELOG.md) to be the first to use new features and to stay up to date with breaking changes
+See the [CHANGELOG](CHANGELOG.md) to be the first to use the new features and to stay up to date with breaking changes
 
 # Installation
 
