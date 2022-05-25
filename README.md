@@ -238,5 +238,4 @@ await store.findManyAndCount({
 
 # Example
 
-You are at the end of the doc and something is still unclear? 
-What is better than [a real example](/example) to show you the full capabilities of Backinfront !
+Something is still unclear? What is better than [a real example](/example) to show you the full capabilities of Backinfront !
