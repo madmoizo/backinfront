@@ -321,16 +321,6 @@ export default class Backinfront {
   }
 
   /**
-  * Delete the database
-  * @example Can be useful to clean a user profile on logout for example
-  */
-  async destroy () {
-    await deleteDB(this.databaseName)
-    this.#databaseConfigurationStarted = false
-    this.#databaseConfigurationEnded = false
-  }
-
-  /**
    * Get a transaction
    * @param  {'readonly'|'readwrite'} mode
    * @param  {Array<string>} [storeNames=null]
@@ -357,6 +347,16 @@ export default class Backinfront {
       : await this.getTransaction(mode, storeName)
     const store = transaction.objectStore(storeName)
     return store
+  }
+
+  /**
+  * Delete the database
+  * @example Can be useful to clean a user profile on logout for example
+  */
+  async destroy () {
+    await deleteDB(this.databaseName)
+    this.#databaseConfigurationStarted = false
+    this.#databaseConfigurationEnded = false
   }
 
   /*****************************************************************
@@ -497,9 +497,8 @@ export default class Backinfront {
   */
   #findRouteFromRequest (request) {
     const url = new URL(request.url)
-
-    return this.routes[url.origin]?.filter(route => request.method === route.method)
-      .find(route => route.regexp.test(`${url.origin}${url.pathname}`))
+    const routeLocation = this.routes[url.origin]?.[request.method]?.[url.pathname.match(/[^/]+/g).length]
+    return routeLocation?.find(route => route.regexp.test(`${url.origin}${url.pathname}`))
   }
 
   /**
@@ -576,6 +575,10 @@ export default class Backinfront {
     return new Response(undefined, ROUTE_ERRORS[errorCode])
   }
 
+  /*****************************************************************
+  * Process stores & routers
+  *****************************************************************/
+
   /**
   * Add multiple stores in a single call
   * @param {Array<object>} storesParams
@@ -622,19 +625,25 @@ export default class Backinfront {
   * @param {object} routerParams
   * @return {object}
   */
-  addRouter (routerParams) {
+   addRouter (routerParams) {
     const router = new Router(routerParams)
 
     // Add the origin if new
     if (!has(this.routes, router.origin)) {
-      this.routes[router.origin] = []
+      this.routes[router.origin] = {}
     }
     // Add routes to the origin list
     for (const route of router.routes) {
-      this.routes[router.origin].push(route)
+      if (!has(this.routes[router.origin], route.method)) {
+        this.routes[router.origin][route.method] = {}
+      }
+      if (!has(this.routes[router.origin][route.method], route.length)) {
+        this.routes[router.origin][route.method][route.length] = []
+      }
+      // Add the route and reorder
+      this.routes[router.origin][route.method][route.length].push(route)
+      this.routes[router.origin][route.method][route.length].sort((a, b) => b.specificity - a.specificity)
     }
-    // Routes must be reordered by specificity
-    this.routes[router.origin].sort((a, b) => b.specificity - a.specificity)
 
     return router
   }

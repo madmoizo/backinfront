@@ -93,18 +93,23 @@ export default class Router {
   * @param {string} routeParams.pathname
   * @param {function} routeParams.handler
   */
-  addRoute ({ method, pathname, handler }) {
+   addRoute ({ method, pathname, handler }) {
     const url = new URL(joinPaths(this.baseUrl, pathname, '/')) // /!\ force a trailing slash /!\
     // Extract path params from url
     const pathParams = (url.pathname.match(/:[^/]+/g) ?? []).map(tag => tag.replace(':', ''))
     // replace user defined path params with regex expression
     const regexp = new RegExp(`^${url.origin}${url.pathname.replace(/:[^/]+/g, '([a-zA-Z0-9-]+)')}?$`) // /!\ the ? ignore the trailing slash /!\
+    // Specificity is a code
+    const parts = url.pathname.match(/[^/]+/g)
+    const specificity = `1${parts.map(part => part.startsWith(':') ? '0' : '1').join('')}`
+    const length = parts.length
 
     this.routes.push({
-      specificity: (pathname.split('/').length * 2) - pathParams.length,
       url,
       pathParams,
       regexp,
+      specificity,
+      length,
       method: method.toUpperCase(),
       pathname,
       handler
