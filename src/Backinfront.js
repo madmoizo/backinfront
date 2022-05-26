@@ -4,9 +4,9 @@ import {
   has,
   isAfterDate,
   isArray,
-  isDate,
   mergeObject,
   parseDate,
+  stringifySearchParams,
   typecheck,
   waitUntil
 } from 'utililib'
@@ -426,35 +426,6 @@ export default class Backinfront {
   *****************************************************************/
 
   /**
-  * Fetch helper to build the request url
-  * @param {object} options
-  * @param {string} options.pathname
-  * @param {object} [options.searchParams]
-  * @return {string}
-  */
-  #buildRequestUrl ({ pathname, searchParams }) {
-    let requestUrl = pathname
-
-    if (searchParams) {
-      const stringifiedSearchParams = Object.entries(searchParams)
-        .filter(([key, value]) => value !== undefined)
-        .map(([key, value]) => {
-          if (isDate(value)) {
-            value = value.toJSON()
-          }
-          return `${encodeURIComponent(key)}=${encodeURIComponent(value)}`
-        })
-        .join('&')
-
-      if (stringifiedSearchParams) {
-        requestUrl += `?${stringifiedSearchParams}`
-      }
-    }
-
-    return requestUrl
-  }
-
-  /**
   * Fetch helper to build the request init param
   * @param {object} body
   * @param {object} options
@@ -480,10 +451,7 @@ export default class Backinfront {
     }
 
     // Set body
-    if (
-      ['POST', 'PUT', 'PATCH'].includes(requestInit.method) &&
-      body
-    ) {
+    if (body && ['POST', 'PUT', 'PATCH'].includes(requestInit.method)) {
       requestInit.body = JSON.stringify(body)
     }
 
@@ -500,9 +468,8 @@ export default class Backinfront {
   * @return {object}
   */
   async #fetch ({ method, pathname, searchParams, body }) {
-    const requestUrl = this.#buildRequestUrl({ pathname, searchParams })
+    const requestUrl = `${pathname}${stringifySearchParams(searchParams)}`
     const requestInit = await this.#buildRequestInit({ method, body })
-
     const fetchRequest = new Request(requestUrl, requestInit)
     let fetchResponse
 
@@ -510,15 +477,13 @@ export default class Backinfront {
       fetchResponse = await fetch(fetchRequest)
 
       if (!fetchResponse.ok) {
-        throw new BackinfrontError('Fetch: Response status is not ok')
+        throw new Error('Response status is not ok')
       }
     } catch (error) {
       throw new BackinfrontError(`fetch: ${error.message}`)
     }
 
-    const serverData = await fetchResponse.json()
-
-    return serverData
+    return fetchResponse.json()
   }
 
   /*****************************************************************
