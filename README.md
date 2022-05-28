@@ -6,7 +6,10 @@
 3. [Browser support](#browser-support)
 4. [Installation](#installation)
 2. [Changes](#changes)
-5. [Usage](#api)
+5. [API](#api)
+    1. [Backinfront](#api)
+    2. [Router](#router)
+    3. [Store](#store)
 6. [Example](#example)
 
 
@@ -24,74 +27,75 @@ See the [CHANGELOG](CHANGELOG.md) to be the first to use the new features and to
 
 # Installation
 
+> ⚠️ Backinfront is designed to work inside a [Service Worker](https://developer.mozilla.org/en-US/docs/Web/API/Service_Worker_API) make sure to NOT use it in a window context. ⚠️
+
 ```sh
 npm install backinfront
 ```
 
-# Usage
+# API
 
-Backinfront is designed to work inside a [Service worker](https://developer.mozilla.org/en-US/docs/Web/API/Service_Worker_API) make sure to NOT use it in window context.
+## Backinfront
+
+### Usage
 
 ```js
-import Backinfront from 'backinfront'
+const backinfront: BackinfrontAPI = new Backinfront(options: BackinfrontOptions)
+```
 
+### Interfaces
 
-const backinfront = new Backinfront({
+```js
+interface RoutePresetOptions {
+  // Name of a store
+  storeName: string,
+  // Preset routes
+  presets: Array<'create' | 'list' | 'retrieve' | 'update'>
+}
+
+interface RouteOptions {
+  // Method of the request
+  method: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE',
+  // Part of the url after the `baseUrl`
+  // You can specify a `pathParam` by prefixing part of the url with `:`
+  pathname: string,
+  // Action performed locally
+  handler(context: RouteHandlerContext, stores: { [storeName: string]: Store }): object | Array<object>
+}
+
+interface RouterOptions {
+  baseUrl: string,
+  routes: Array<RouteOptions | RoutePresetOptions>
+}
+
+interface StoreOptions {
+  // Name of the store
+  storeName: string,
+  // Name of the primaryKey
+  primaryKey: string,
+  // List of indexes
+  indexes: {
+    [indexName: string]: string | Array<string>
+  }
+}
+
+interface BackinfrontOptions {
   // Name of the indexedDB database
   databaseName: string,
   // List of stores
-  stores: Array<{
-    // Name of the store
-    storeName: string,
-    // Name of the primaryKey
-    primaryKey: string,
-    // List of indexes
-    indexes: {
-      [indexName: string]: string | Array<string>
-    }
-  }>,
+  stores: Array<StoreOptions>,
   // List of routers
-  routers: Array<{
-    baseUrl: string,
-    routes: Array<{
-        // Method of the request
-        method: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE',
-        // Part of the url after the `baseUrl`
-        // You can specify a `pathParam` by prefixing part of the url with `:`
-        pathname: string,
-        // Action performed locally
-        handler(
-          context: {
-            request: Request,
-            transaction: IDBTransaction,
-            // Date returned by `routeState` function
-            state: { [globalData: string]: any },
-            // Search param after being formatted by `formatRouteSearchParam`
-            searchParams: { [searchParams: string]: string | any },
-            // Path param after being formatted by `formatRoutePathParam`
-            pathParams: { [pathParam: string]: string | any },
-            // Body of the request (null if method is GET)
-            body: null | object | Array<object>
-          },
-          stores: {
-            [storeName: string]: Store
-          }
-        ): object | Array<object>
-      } | {
-        // Name of a store
-        storeName: string,
-        // Preset routes
-        presets: Array<'create' | 'list' | 'retrieve' | 'update'>
-      }
-    >
-  }>,
+  routers: Array<RouterOptions>,
   // URL used for database population
   populateUrl: string,
   // URL used for database synchronization
   syncUrl: string,
   // Provides a JWT to authenticate requests on the server
   authentication?: false,
-  authentication?(): string,
+  authentication?(): Promise<string>,
+  // Key to use when the result contains count & data
+  collectionCountKey?: string,
+  collectionDataKey?: string,
   // Add data to context of offline handled routes
   routeState?(request: Request): object,
   // Formats data just before the insertion
@@ -102,9 +106,9 @@ const backinfront = new Backinfront({
   // Format path params of a request handled offline
   formatRoutePathParam?(pathParam: string): any,
   // Hook triggered after a successful offline request
-  onRouteSuccess?({ route: object, result: object | Array<object> }): void,
+  onRouteSuccess?({ route: Route, result: object | Array<object> }): void,
   // Hook triggered after a failed offline request
-  onRouteError?({ route: object, error: Error }): void,
+  onRouteError?({ route: Route, error: Error }): void,
   // Hook triggered after a successful database initial population
   onPopulateSuccess?(): void,
   // Hook triggered after a failure during database initial population
@@ -113,35 +117,56 @@ const backinfront = new Backinfront({
   onSyncSuccess?(): void,
   // Hook triggered after a failure during database synchronization
   onSyncError?({ error: Error }): void
-})
+}
 
-/*
-  Perform a fetch request to the `populateUrl`
-  Request
-  {
-    method: 'GET',
-    searchParams: {
-      storeNames: ['storename1', ... , 'storeNameX']
+interface BackinfrontAPI {
+  stores: { [storeName: string]: Store },
+  routes: {
+    [urlOrigin: string]: {
+      [urlMethod: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE']: {
+        [pathNameLength: number]: Array<Route>
+      }
     }
-  }
-  Response expected from the server
-  {
-    storeName1: [item1, ..., itemX],
-    ...,
-    storeNameX: [item1, ..., itemX],
-  }
-*/
-backinfront.populate(storeNames: Array<string>)
-
-/*
-  Perform a fetch request to the `syncUrl`
-  Request
-  {
-    method: 'POST',
-    searchParams: {
-      lastChangeAt // date of the last object returned by the server
-    },
-    body: [
+  },
+  // Add a routers after initialization
+  addRouters(routers: Array<RouterOptions>): void,
+  addRouter(options: RouterOptions): void,
+  /*
+    Perform a fetch request to the `populateUrl`
+    Request
+    {
+      method: 'GET',
+      searchParams: {
+        storeNames: ['storename1', ... , 'storeNameX']
+      }
+    }
+    Response expected from the server
+    {
+      storeName1: [item1, ..., itemX],
+      ...,
+      storeNameX: [item1, ..., itemX],
+    }
+  */
+  populate(storeNames: Array<string>): Promise<void>,
+  /*
+    Perform a fetch request to the `syncUrl`
+    Request
+    {
+      method: 'POST',
+      searchParams: {
+        lastChangeAt // date of the last object returned by the server
+      },
+      body: [
+        {
+          createdAt,
+          storeName,
+          primaryKey,
+          data
+        }, ...
+      ]
+    }
+    Response
+    [
       {
         createdAt,
         storeName,
@@ -149,76 +174,165 @@ backinfront.populate(storeNames: Array<string>)
         data
       }, ...
     ]
-  }
-  Response
-  [
-    {
-      createdAt,
-      storeName,
-      primaryKey,
-      data
-    }, ...
-  ]
-  Note: 
-  The recommended way to use the sync capability is to send a message periodically 
-  from the window context which will trigger this function
-*/
-backinfront.sync()
+    Note: 
+    The recommended way to use the sync capability is to send a message periodically 
+    from the window context which will trigger this function
+  */
+  sync(): Promise<void>,
+  /*
+    Destroy the local database
+    Sometimes, it can be convenient to clear the local data (on user logout for example).
+    The database will be destroyed so you must ensure to stop your sync loop
+    and manually call the sync function a last time before calling destroy.
+  */
+  destroy(): Promise<void>
+}
+```
 
-/*
-  Destroy the local database
-  Sometimes, it can be convenient to clear the local data (on user logout for example).
-  The database will be destroyed so you must ensure to stop your sync loop
-  and manually call the sync function a last time before calling destroy.
-*/
-backinfront.destroy()
+## Router
 
+### Usage
 
-//
-// Stores provide a useful api which allows local data manipulation
-//
+Router is processed on [Backinfront](#api) instantiation and you can't access it after.
+However, you can get the full list of registered routes but be careful, the structure is optimized for fast search on http request.
+```js
+const routes = backinfront.routes
+```
+
+### Interfaces
+```js
+interface RouteHandlerContext {
+  request: Request,
+  transaction: IDBTransaction,
+  // Date returned by `routeState` function
+  state: { [globalData: string]: any },
+  // Search param after being formatted by `formatRouteSearchParam`
+  searchParams: { [searchParams: string]: string | any },
+  // Path param after being formatted by `formatRoutePathParam`
+  pathParams: { [pathParam: string]: string | any },
+  // Body of the request (null if the request's method is GET)
+  body: null | object | Array<object>
+}
+
+interface Route {
+  method: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE',
+  url: URL,
+  pathParams: Array<string>,
+  handler(context: RouteHandlerContext, stores: { [storeName: string]: Store }): object | Array<object>,
+  // Params used for filtering
+  regexp: RegExp,
+  specificity: string,
+  length: number,
+}
+```
+
+## Store
+
+### Usage
+
+A Store is accessible on direct access to the `stores` property of the Backinfront interface
+
+```js
 const store = backinfront.stores[storeName]
+```
+But also provided as the second parameter of the `handler` property of a [Route](#router)
+```js
+{
+  method: 'GET',
+  pathname: '/',
+  handler (context, { Store1, Store2 }) {
+    return Store1.findMany()
+  }
+}
+```
 
-// Delete all elements from the store
-await store.clear(transaction?: IDBTransaction)
-// Delete the element matching the primaryKey value from the store
-await store.delete(primaryKeyValue: any, transaction?: IDBTransaction)
-// Add a new item to the store
-await store.create(data: object, transaction?: IDBTransaction)
-// Update an existing item from the store
-await store.update(primaryKeyValue: any, data: object, transaction?: IDBTransaction)
-// Count the total of items in the store
-await store.count(transaction?: IDBTransaction)
-// Find an item by it's primaryKey value
-await store.findOne(primaryKeyValue, transaction?: IDBTransaction)
-// Find a list of items matching the provided condition
-await store.findManyAndCount(condition?: object, transaction?: IDBTransaction)
-await store.findMany(condition?: object, transaction?: IDBTransaction)
+### Interfaces
 
-//
-// To build the `condition` used by findMany and findManyAndCount
-// You can use the powerful query language provided by the lib
-//
+```js
+
+interface FindQuery {
+  where: object,
+  limit: number,
+  offset: number,
+  order: Array<string>
+}
+
+interface StoreAPI {
+  // Delete all elements from the store
+  clear(transaction?: IDBTransaction): Promise<void>,
+  // Delete the element matching the primaryKey value from the store
+  delete(primaryKeyValue: any, transaction?: IDBTransaction): Promise<void>,
+  // Add a new item to the store
+  create(data: object, transaction?: IDBTransaction): Promise<object>,
+  // Update an existing item from the store
+  update(primaryKeyValue: any, data: object, transaction?: IDBTransaction): Promise<object>,
+  // Count the total of items in the store
+  count(transaction?: IDBTransaction): Promise<number>,
+  // Find an item by it's primaryKey value
+  findOne(primaryKeyValue, transaction?: IDBTransaction): Promise<object>,
+  // Find a list of items matching the provided condition
+  findManyAndCount(condition?: FindQuery, transaction?: IDBTransaction): Promise<object>,
+  findMany(condition?: FindQuery, transaction?: IDBTransaction): Promise<Array<object>>
+}
+```
+
+### Query language
+
+Backinfront provides a powerful API to ease the filtering of database records.
+You can make good use of it in the `where` property of the `FindQuery` interface.
+
+```js
 await store.findManyAndCount({
   where: {
-    // $and & $or expect an array of condition 
-    $or: [
+    //
+    // Logical operators
+    //
+    $or: [],
+    $and: [],
+    // Logical operators can be nested
+    $and: [
+      { $or: [] },
       { $and: [] },
-      { $and: [] }
-    ],
-    // $and is implicit when there are multiples conditions side by side
+    ]
+
+    //
+    // $and shorthands
+    //
+
+    // $and can be implicit in 2 cases
+    // 1 - multiple filters side by side
+    // this:
     property1: value1,
     property2: value2,
-    // But you can use it if you want to
+    // is equivalent to this:
     $and: [
       { property1: value1 },
-      { property2: value2 }
+      { property2: value2 },
     ]
-    // Dot notation is also supported to access nested object
+    // 2 - multiple filters for the same property
+    // this:
+    property: {
+      $gt: value,
+      $lt: value,
+    },
+    // is equivalent to this:
+    $and: [
+      { property: { $gt: value } },
+      { property: { $lt: value } },
+    ]
+
+    //
+    // Dot notation
+    //
+
+    // Allow to filter deeeeeep properties
     'grandma.mum.me': value
-    // List of operators
-    property: value, // 1
-    property: { $equal: value }, // equivalent to 1
+
+    //
+    // Available filters (open an issue if you need more)
+    //
+
+    property: { $equal: value }, // equivalent to `property: value`
     property: { $gt: value },
     property: { $gte: value },
     property: { $lt: value },
@@ -238,4 +352,4 @@ await store.findManyAndCount({
 
 # Example
 
-Something is still unclear? What is better than [a real example](/example) to show you the full capabilities of Backinfront !
+Something is still unclear? What is better than [a real example](/example) to show you the best way to use Backinfront!
