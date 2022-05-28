@@ -105,14 +105,14 @@ export default class Router {
     const length = parts.length
 
     this.routes.push({
+      method: method.toUpperCase(),
       url,
       pathParams,
+      handler,
+      // Params used for filtering
       regexp,
       specificity,
-      length,
-      method: method.toUpperCase(),
-      pathname,
-      handler
+      length
     })
   }
 }
