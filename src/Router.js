@@ -51,7 +51,7 @@ export default class Router {
         value: options,
         type: ['object', {
           baseUrl: { type: 'string', required: true },
-          routes: { type: 'array' },
+          routes: { type: 'array' }
         }]
       }
     })
@@ -93,7 +93,7 @@ export default class Router {
   * @param {string} routeParams.pathname
   * @param {function} routeParams.handler
   */
-   addRoute ({ method, pathname, handler }) {
+  addRoute ({ method, pathname, handler }) {
     const url = new URL(joinPaths(this.baseUrl, pathname, '/')) // /!\ force a trailing slash /!\
     // Extract path params from url
     const pathParams = (url.pathname.match(/:[^/]+/g) ?? []).map(tag => tag.replace(':', ''))

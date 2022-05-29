@@ -72,6 +72,7 @@ export default class Backinfront {
       }
     }
   }
+
   routes = {}
   stores = {}
   authentication = false
@@ -86,7 +87,7 @@ export default class Backinfront {
   onPopulateError = () => null
   onSyncSuccess = () => null
   onSyncError = () => null
-  formatDataBeforeSave = (data) => JSON.parse(JSON.stringify(data)) // by default, easiest way to convert Date to json & clean an object  
+  formatDataBeforeSave = (data) => JSON.parse(JSON.stringify(data)) // by default, easiest way to convert Date to json & clean an object
 
   /**
   * @constructor
@@ -316,7 +317,7 @@ export default class Backinfront {
   async getTransaction (mode, storeNames = null) {
     await this.#databaseReady()
     const db = await openDB(this.databaseName)
-    const transaction = db.transaction(storeNames || db.objectStoreNames, mode,  { durability: 'relaxed' })
+    const transaction = db.transaction(storeNames || db.objectStoreNames, mode, { durability: 'relaxed' })
     // The connection is not actually closed until all transactions
     // created using this connection are complete
     // https://developer.mozilla.org/en-US/docs/Web/API/IDBDatabase/close
@@ -456,7 +457,7 @@ export default class Backinfront {
   */
   async #getRouteResponse (route, request) {
     const ctx = {
-      request: request,
+      request,
       state: {},
       searchParams: {},
       pathParams: {},
@@ -517,7 +518,7 @@ export default class Backinfront {
     this.onRouteSuccess({ route, result: routeHandlerResult })
     return routeHandlerResult instanceof Response
       ? routeHandlerResult
-      : new Response(JSON.stringify(routeHandlerResult)) 
+      : new Response(JSON.stringify(routeHandlerResult))
   }
 
   /*****************************************************************
@@ -570,7 +571,7 @@ export default class Backinfront {
   * @param {object} routerParams
   * @return {object}
   */
-   addRouter (routerParams) {
+  addRouter (routerParams) {
     const router = new Router(routerParams)
 
     // Add the origin if new
@@ -703,7 +704,7 @@ export default class Backinfront {
       }
 
       // Clear the queue if not empty
-      if (clientToServerData.length) {
+      if (clientData.length) {
         await syncQueueStore.clear()
       }
 
