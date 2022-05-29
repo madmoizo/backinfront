@@ -378,7 +378,7 @@ export default class Backinfront {
   * @param {object} body
   * @param {object} options
   * @param {object} options.method
-  * @param {object} [options.bbody]
+  * @param {object} [options.body]
   */
   async #buildRequestInit ({ method, body }) {
     const requestInit = {
