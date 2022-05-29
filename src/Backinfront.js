@@ -362,7 +362,7 @@ export default class Backinfront {
     const store = await this.openStore(this.#syncQueueStoreName, transaction)
     await store.add({
       id: crypto.randomUUID(),
-      createdAt: (new Date()).toJSON(),
+      createdAt: new Date().toJSON(),
       storeName,
       primaryKey,
       data
