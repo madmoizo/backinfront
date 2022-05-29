@@ -1,6 +1,5 @@
 import { openDB, deleteDB } from 'idb'
 import {
-  deduplicateArray,
   has,
   isAfterDate,
   isArray,
