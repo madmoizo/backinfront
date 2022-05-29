@@ -105,7 +105,7 @@ export default class Store {
 
   /**
   * Count all items in the store
-  * @param {IDBTransaction} transaction
+  * @param {IDBTransaction} [transaction]
   * @return {number}
   */
   async count (transaction = null) {
@@ -116,8 +116,8 @@ export default class Store {
 
   /**
   * Get all items and the count
-  * @param {object} condition - list of filters (where, limit, offset, order)
-  * @param {IDBTransaction} transaction
+  * @param {object} [condition] - list of filters (where, limit, offset, order)
+  * @param {IDBTransaction} [transaction]
   * @return {object}
   */
   async findManyAndCount (condition = null, transaction = null) {
@@ -172,8 +172,8 @@ export default class Store {
 
   /**
   * Get all items
-  * @param {object} condition - list of filters (where, limit, offset, order)
-  * @param {IDBTransaction} transaction
+  * @param {object} [condition] - list of filters (where, limit, offset, order)
+  * @param {IDBTransaction} [transaction]
   * @return {Array<object>}
   */
   async findMany (condition = null, transaction = null) {
@@ -184,7 +184,7 @@ export default class Store {
   /**
   * Get an item with a primary key
   * @param {string} primaryKeyValue
-  * @param {IDBTransaction} transaction
+  * @param {IDBTransaction} [transaction]
   * @return {object}
   */
   async findOne (primaryKeyValue, transaction = null) {
@@ -204,7 +204,7 @@ export default class Store {
 
   /**
   * Clear the store
-  * @param {IDBTransaction} transaction
+  * @param {IDBTransaction} [transaction]
   */
   async clear (transaction = null) {
     const store = await this.#backinfront.openStore(this.storeName, transaction || 'readwrite')
@@ -214,7 +214,7 @@ export default class Store {
   /**
   * Delete one item
   * @param {string} primaryKeyValue
-  * @param {IDBTransaction} transaction
+  * @param {IDBTransaction} [transaction]
   */
   async delete (primaryKeyValue, transaction = null) {
     const store = await this.#backinfront.openStore(this.storeName, transaction || 'readwrite')
@@ -224,7 +224,7 @@ export default class Store {
   /**
   * Insert a new item
   * @param {object} data
-  * @param {IDBTransaction} transaction
+  * @param {IDBTransaction} [transaction]
   * @return {object}
   */
   async create (data, transaction = null) {
@@ -240,22 +240,27 @@ export default class Store {
     this.beforeCreate(data)
     const formattedData = this.#backinfront.formatDataBeforeSave(data)
     const savedPrimaryKeyValue = await store.add(formattedData)
+    const refreshedData = await store.get(savedPrimaryKeyValue)
 
-    await this.#backinfront.addToSyncQueue(this.storeName, savedPrimaryKeyValue, transaction)
+    await this.#backinfront.addToSyncQueue({
+      storeName: this.storeName,
+      primaryKey: savedPrimaryKeyValue,
+      data: refreshedData
+    }, transaction)
 
     // Force commit if the function own the transaction
     if (autocommit) {
       transaction.commit?.()
     }
 
-    return store.get(savedPrimaryKeyValue)
+    return refreshedData
   }
 
   /**
   * Update an item (or insert if not already existing)
   * @param {string} primaryKeyValue
   * @param {object} data
-  * @param {IDBTransaction} transaction
+  * @param {IDBTransaction} [transaction]
   * @return {object}
   */
   async update (primaryKeyValue, data, transaction = null) {
@@ -280,14 +285,19 @@ export default class Store {
     const formattedData = this.#backinfront.formatDataBeforeSave(updatedData)
     // Store the new object
     const savedPrimaryKeyValue = await store.put(formattedData)
+    const refreshedData = await store.get(savedPrimaryKeyValue)
 
-    await this.#backinfront.addToSyncQueue(this.storeName, savedPrimaryKeyValue, transaction)
+    await this.#backinfront.addToSyncQueue({
+      storeName: this.storeName,
+      primaryKey: savedPrimaryKeyValue,
+      data: refreshedData
+    }, transaction)
 
     // Force commit if the function own the transaction
     if (autocommit) {
       transaction.commit?.()
     }
 
-    return store.get(savedPrimaryKeyValue)
+    return refreshedData
   }
 }

@@ -16,17 +16,6 @@ import Router from './Router.js'
 import Store from './Store.js'
 
 
-const ROUTE_ERRORS = {
-  'NOT_FOUND': {
-    status: 404,
-    statusText: 'Not found'
-  },
-  'ACTION_ERROR': {
-    status: 500,
-    statusText: 'Action error'
-  }
-}
-
 const DB_OPERATIONS = {
   /**
      * @param {IDBTransaction} transaction
@@ -364,60 +353,19 @@ export default class Backinfront {
   *****************************************************************/
 
   /**
-   * Get a value from the key-value store owned by the lib
-   * @param  {string} key
-   */
-  async #getMetadata (key) {
-    const store = await this.openStore(this.#metadataStoreName, 'readonly')
-    const value = await store.get(key)
-    return value
-  }
-
-  /**
-   * Set a value from the key-value store owned by the lib
-   * @param {string} key
-   * @param {any} value
-   */
-  async #setMetadata (key, value) {
-    const store = await this.openStore(this.#metadataStoreName, 'readwrite')
-    await store.put(value, key)
-  }
-
-  /**
-   * Get all items from the queue store owned by the lib
-   */
-  async #getAllFromSyncQueue () {
-    const rows = []
-    const store = await this.openStore(this.#syncQueueStoreName, 'readonly')
-    let cursor = await store.index('createdAt').openCursor(null, 'prev')
-    while (cursor) {
-      rows.push(cursor.value)
-      cursor = await cursor.continue()
-    }
-    return rows
-  }
-
-  /**
-   * Remove all itemms from the queue store owned by the lib
-   */
-  async #clearSyncQueue () {
-    const store = await this.openStore(this.#syncQueueStoreName, 'readwrite')
-    await store.clear()
-  }
-
-  /**
    * Add a new item to the queue store owned by the lib
    * @param {string} storeName
    * @param {string} primaryKey
    * @param {IDBTransaction} transaction
    */
-  async addToSyncQueue (storeName, primaryKey, transaction) {
+  async addToSyncQueue ({ storeName, primaryKey, data }, transaction) {
     const store = await this.openStore(this.#syncQueueStoreName, transaction)
     await store.add({
       id: crypto.randomUUID(),
       createdAt: (new Date()).toJSON(),
-      modelName: storeName,
-      primaryKey: primaryKey
+      storeName,
+      primaryKey,
+      data
     })
   }
 
@@ -462,13 +410,13 @@ export default class Backinfront {
   * Fetch online data
   * @param {object} options
   * @param {string} options.method
-  * @param {string} options.pathname
+  * @param {string} options.url
   * @param {object} [options.searchParams]
   * @param {object} [options.body]
   * @return {object}
   */
-  async #fetch ({ method, pathname, searchParams, body }) {
-    const requestUrl = `${pathname}${stringifySearchParams(searchParams)}`
+  async #fetch ({ method, url, searchParams, body }) {
+    const requestUrl = `${url}${stringifySearchParams(searchParams)}`
     const requestInit = await this.#buildRequestInit({ method, body })
     const fetchRequest = new Request(requestUrl, requestInit)
     let fetchResponse
@@ -493,7 +441,7 @@ export default class Backinfront {
   /**
   * Find a route in the global list
   * @param {Request} request
-  * @return {object}
+  * @return {object | undefined}
   */
   #findRouteFromRequest (request) {
     const url = new URL(request.url)
@@ -540,39 +488,37 @@ export default class Backinfront {
     ctx.state = { ...ctx.state, ...this.routeState(request) }
 
     if (['POST', 'PUT', 'PATCH'].includes(request.method)) {
-      // Provide the body
       ctx.body = await (request.clone()).json()
-      // Provide a global transaction
-      ctx.transaction = await this.getTransaction('readwrite')
     }
+
+    // Provide a global transaction
+    ctx.transaction = await this.getTransaction('readwrite')
 
     // Try to execute the route action
-    let result
-    let errorCode = 'NOT_FOUND'
+    let routeHandlerResult
+    let routeHandlerError
 
     try {
-      result = await route.handler(ctx, this.stores)
+      routeHandlerResult = await route.handler(ctx, this.stores)
 
-      // Progressive ehancement: commit not supported by safari on iOS (last check: 15/09/21)
       ctx.transaction?.commit?.()
-
-      this.onRouteSuccess({ route, result })
     } catch (error) {
-      errorCode = 'ACTION_ERROR'
-
+      routeHandlerError = error
       ctx.transaction?.abort()
-
-      this.onRouteError({ route, error })
     }
 
-    // Response
-    if (result instanceof Response) {
-      return result
+    if (routeHandlerError) {
+      this.onRouteError({ route, error: routeHandlerError })
+      return new Response(undefined, {
+        status: 500,
+        statustext: `Route handler error: ${routeHandlerError.message}`
+      })
     }
-    if (result) {
-      return new Response(JSON.stringify(result))
-    }
-    return new Response(undefined, ROUTE_ERRORS[errorCode])
+
+    this.onRouteSuccess({ route, result: routeHandlerResult })
+    return routeHandlerResult instanceof Response
+      ? routeHandlerResult
+      : new Response(JSON.stringify(routeHandlerResult)) 
   }
 
   /*****************************************************************
@@ -673,26 +619,24 @@ export default class Backinfront {
       .map(([storeName, store]) => storeName)
 
     try {
-      const serverDataToSync = await this.#fetch({
+      const response = await this.#fetch({
         method: 'GET',
-        pathname: this.populateUrl,
+        url: this.populateUrl,
         searchParams: {
-          modelNames: storeNames
+          storeNames
         }
       })
 
       await Promise.all(
-        Object.keys(serverDataToSync)
-          .map(async (storeName) => {
-            // Here we use one transaction per store instead of a global one
-            // because high number of inserts on the same transaction can be slow
-            const store = await this.openStore(storeName, 'readwrite')
-            const rows = serverDataToSync[storeName]
+        Object.entries(response).map(async ([storeName, rows]) => {
+          // Here we use one transaction per store instead of a global one
+          // because high number of inserts on the same transaction can be slow
+          const store = await this.openStore(storeName, 'readwrite')
 
-            return Promise.all(
-              rows.map(item => store.put(item))
-            )
-          })
+          return Promise.all(
+            rows.map(element => store.put(element))
+          )
+        })
       )
 
       this.onPopulateSuccess()
@@ -712,42 +656,41 @@ export default class Backinfront {
     try {
       this.#syncInProgress = true
 
+      const transaction = await this.getTransaction('readwrite')
+      const [metadataStore, syncQueueStore] = Promise.all([
+        this.openStore(this.#metadataStoreName, transaction),
+        this.openStore(this.#syncQueueStoreName, transaction)
+      ])
+
       // Init lastChangeAt
-      let currentLastChangeAt = await this.#getMetadata('lastChangeAt')
+      let currentLastChangeAt = await metadataStore.get('lastChangeAt')
       let nextLastChangeAt = null
 
       if (!currentLastChangeAt) {
-        currentLastChangeAt = new Date()
-        nextLastChangeAt = currentLastChangeAt
+        nextLastChangeAt = currentLastChangeAt = new Date()
       }
 
-      // Retrieve data to sync
-      const syncQueueItems = await this.#getAllFromSyncQueue()
-      const clientDataToSync = await Promise.all(
-        deduplicateArray(syncQueueItems, ['primaryKey','modelName'])
-          .map(async ({ createdAt, modelName, primaryKey }) => ({
-            createdAt,
-            modelName,
-            primaryKey,
-            data: await this.stores[modelName].findOne(primaryKey)
-          }))
-      )
+      // Retrieve local data to sync
+      const clientData = []
+      let cursor = await syncQueueStore.index('createdAt').openCursor(null, 'prev')
+      while (cursor) {
+        clientData.push(cursor.value)
+        cursor = await cursor.continue()
+      }
 
-      // Send data to sync
-      const serverDataToSync = await this.#fetch({
+      // Sync local data with the server
+      const serverData = await this.#fetch({
         method: 'POST',
-        pathname: this.syncUrl,
+        url: this.syncUrl,
         searchParams: {
           lastChangeAt: currentLastChangeAt
         },
-        body: clientDataToSync
+        body: clientData
       })
 
-      // Sync data from server
-      const transaction = await this.getTransaction('readwrite')
-
-      for (const { createdAt, modelName, data } of serverDataToSync) {
-        const store = await this.openStore(modelName, transaction)
+      // Sync server data locally
+      for (const { createdAt, storeName, data } of serverData) {
+        const store = await this.openStore(storeName, transaction)
         await store.put(data)
 
         if (!nextLastChangeAt || isAfterDate(parseDate(createdAt), nextLastChangeAt)) {
@@ -757,12 +700,12 @@ export default class Backinfront {
 
       // Save the last sync date
       if (nextLastChangeAt) {
-        await this.#setMetadata('lastChangeAt', nextLastChangeAt.toJSON())
+        await metadataStore.put('lastChangeAt', nextLastChangeAt.toJSON())
       }
 
       // Clear the queue if not empty
-      if (syncQueueItems.length) {
-        await this.#clearSyncQueue()
+      if (clientToServerData.length) {
+        await syncQueueStore.clear()
       }
 
       this.onSyncSuccess()
