@@ -7,7 +7,8 @@
   "keywords": [
     "service-worker",
     "indexeddb",
-    "offline",
+    "router",
+    "offline-first",
     "sync"
   ],
   "repository": {
@@ -17,7 +18,15 @@
   "type": "module",
   "main": "index.js",
   "scripts": {
+    "lint": "eslint --fix src/**/*.js",
     "postversion": "git push && git push --follow-tags"
+  },
+  "devDependencies": {
+    "eslint": "^8.16.0",
+    "eslint-config-standard": "^17.0.0",
+    "eslint-plugin-import": "^2.25.4",
+    "eslint-plugin-node": "^11.1.0",
+    "eslint-plugin-promise": "^6.0.0"
   },
   "dependencies": {
     "idb": "^7.0.1",
