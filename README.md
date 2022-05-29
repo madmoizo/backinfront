@@ -60,7 +60,7 @@ interface RouteOptions {
   // You can specify a `pathParam` by prefixing part of the url with `:`
   pathname: string,
   // Action performed locally
-  handler(context: RouteHandlerContext, stores: { [storeName: string]: Store }): object | Array<object>
+  handler(context: RouteHandlerContext, stores: { [storeName: string]: Store }): any
 }
 
 interface RouterOptions {
@@ -218,7 +218,7 @@ interface Route {
   method: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE',
   url: URL,
   pathParams: Array<string>,
-  handler(context: RouteHandlerContext, stores: { [storeName: string]: Store }): object | Array<object>,
+  handler(context: RouteHandlerContext, stores: { [storeName: string]: Store }): any,
   // Params used for filtering
   regexp: RegExp,
   specificity: string,
