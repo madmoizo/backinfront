@@ -218,7 +218,7 @@ interface Route {
   method: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE',
   url: URL,
   pathParams: Array<string>,
-  handler(context: RouteHandlerContext, stores: { [storeName: string]: Store }): any,
+  handler(context: RouteHandlerContext, stores: { [storeName: string]: StoreAPI }): any,
   // Params used for filtering
   regexp: RegExp,
   specificity: string,
@@ -230,12 +230,12 @@ interface Route {
 
 ### Usage
 
-A Store is accessible on direct access to the `stores` property of the Backinfront interface
+A Store is accessible via the `stores` property of the Backinfront interface
 
 ```js
 const store = backinfront.stores[storeName]
 ```
-But also provided as the second parameter of the `handler` property of a [Route](#router)
+But also provided as the second parameter of the `handler` property of a [RouteOptions](#api)
 ```js
 {
   method: 'GET',
