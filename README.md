@@ -293,7 +293,7 @@ await store.findManyAndCount({
     $and: [
       { $or: [] },
       { $and: [] },
-    ]
+    ],
 
     //
     // $and shorthands
@@ -308,7 +308,7 @@ await store.findManyAndCount({
     $and: [
       { property1: value1 },
       { property2: value2 },
-    ]
+    ],
     // 2 - multiple filters for the same property
     // this:
     property: {
@@ -319,7 +319,7 @@ await store.findManyAndCount({
     $and: [
       { property: { $gt: value } },
       { property: { $lt: value } },
-    ]
+    ],
 
     //
     // Dot notation
