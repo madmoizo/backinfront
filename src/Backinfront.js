@@ -1,6 +1,6 @@
 import { openDB, deleteDB } from 'idb'
 import {
-  has,
+  getDeepValue,
   isAfterDate,
   isArray,
   mergeObject,
@@ -574,21 +574,13 @@ export default class Backinfront {
   addRouter (routerParams) {
     const router = new Router(routerParams)
 
-    // Add the origin if new
-    if (!has(this.routes, router.origin)) {
-      this.routes[router.origin] = {}
-    }
     // Add routes to the origin list
     for (const route of router.routes) {
-      if (!has(this.routes[router.origin], route.method)) {
-        this.routes[router.origin][route.method] = {}
-      }
-      if (!has(this.routes[router.origin][route.method], route.length)) {
-        this.routes[router.origin][route.method][route.length] = []
-      }
-      // Add the route and reorder
-      this.routes[router.origin][route.method][route.length].push(route)
-      this.routes[router.origin][route.method][route.length].sort((a, b) => b.specificity - a.specificity)
+      const target = getDeepValue(this.routes, [route.url.origin, route.method, route.length], [])
+      // Add the route
+      target.push(route)
+      // Reorder
+      target.sort((a, b) => b.specificity - a.specificity)
     }
 
     return router
