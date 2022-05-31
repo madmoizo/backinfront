@@ -34,7 +34,6 @@ const ROUTES_PRESETS = {
 
 
 export default class Router {
-  origin = ''
   baseUrl = ''
   routes = []
 
@@ -63,8 +62,6 @@ export default class Router {
         routes: (value) => this.addRoutes(value)
       }
     })
-
-    this.origin = new URL(this.baseUrl).origin
   }
 
   /**

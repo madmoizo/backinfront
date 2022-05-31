@@ -1,5 +1,6 @@
 import { openDB, deleteDB } from 'idb'
 import {
+  deduplicateArray,
   getDeepValue,
   isAfterDate,
   isArray,
@@ -358,14 +359,13 @@ export default class Backinfront {
    * @param {string} primaryKey
    * @param {IDBTransaction} transaction
    */
-  async addToSyncQueue ({ storeName, primaryKey, data }, transaction) {
+  async addToSyncQueue ({ storeName, primaryKey }, transaction) {
     const store = await this.openStore(this.#syncQueueStoreName, transaction)
     await store.add({
       id: crypto.randomUUID(),
       createdAt: new Date().toJSON(),
       storeName,
-      primaryKey,
-      data
+      primaryKey
     })
   }
 
@@ -500,20 +500,25 @@ export default class Backinfront {
 
     try {
       routeHandlerResult = await route.handler(ctx, this.stores)
-
-      ctx.transaction?.commit?.()
     } catch (error) {
       routeHandlerError = error
-      ctx.transaction?.abort()
     }
 
     if (routeHandlerError) {
+      // Force the abortion
+      // throw an error if the transaction has been completed prematurely
+      try { ctx.transaction?.abort() } catch {}
+
       this.onRouteError({ route, error: routeHandlerError })
       return new Response(undefined, {
         status: 500,
         statustext: `Route handler error: ${routeHandlerError.message}`
       })
     }
+
+    // Force the commit
+    // throw an error if the transaction has been completed prematurely
+    try { ctx.transaction?.commit() } catch {}
 
     this.onRouteSuccess({ route, result: routeHandlerResult })
     return routeHandlerResult instanceof Response
@@ -648,11 +653,10 @@ export default class Backinfront {
     try {
       this.#syncInProgress = true
 
-      const transaction = await this.getTransaction('readwrite')
-      const [metadataStore, syncQueueStore] = Promise.all([
-        this.openStore(this.#metadataStoreName, transaction),
-        this.openStore(this.#syncQueueStoreName, transaction)
-      ])
+      // Start a new transaction
+      let transaction = await this.getTransaction('readonly')
+      let metadataStore = await this.openStore(this.#metadataStoreName, transaction)
+      let syncQueueStore = await this.openStore(this.#syncQueueStoreName, transaction)
 
       // Init lastChangeAt
       let currentLastChangeAt = await metadataStore.get('lastChangeAt')
@@ -663,12 +667,22 @@ export default class Backinfront {
       }
 
       // Retrieve local data to sync
-      const clientData = []
+      const syncQueueItems = []
       let cursor = await syncQueueStore.index('createdAt').openCursor(null, 'prev')
       while (cursor) {
-        clientData.push(cursor.value)
+        syncQueueItems.push(cursor.value)
         cursor = await cursor.continue()
       }
+
+      // Deduplicate & retrieve fresh data
+      const clientData = await Promise.all(
+        deduplicateArray(syncQueueItems, ['primaryKey', 'modelName']).map(async ({ createdAt, storeName, primaryKey }) => ({
+          createdAt,
+          storeName,
+          primaryKey,
+          data: await this.stores[storeName].findOne(primaryKey, transaction)
+        }))
+      )
 
       // Sync local data with the server
       const serverData = await this.#fetch({
@@ -679,6 +693,11 @@ export default class Backinfront {
         },
         body: clientData
       })
+
+      // Refresh the transaction (the previous one has been terminated because of fetch)
+      transaction = await this.getTransaction('readwrite')
+      metadataStore = await this.openStore(this.#metadataStoreName, transaction)
+      syncQueueStore = await this.openStore(this.#syncQueueStoreName, transaction)
 
       // Sync server data locally
       for (const { createdAt, storeName, data } of serverData) {

@@ -1,4 +1,4 @@
-import { arrayToMap, isArray, isObject, mergeObject, typecheck } from 'utililib'
+import { has, arrayToMap, isArray, isObject, mergeObject, typecheck } from 'utililib'
 import QueryLanguage from './QueryLanguage.js'
 import BackinfrontError from './BackinfrontError.js'
 
@@ -244,8 +244,7 @@ export default class Store {
 
     await this.#backinfront.addToSyncQueue({
       storeName: this.storeName,
-      primaryKey: savedPrimaryKeyValue,
-      data: refreshedData
+      primaryKey: savedPrimaryKeyValue
     }, transaction)
 
     // Force commit if the function own the transaction
@@ -273,7 +272,7 @@ export default class Store {
 
     const store = await this.#backinfront.openStore(this.storeName, transaction)
     // Check the consistency
-    if (!(this.primaryKey in data)) {
+    if (!has(data, this.primaryKey)) {
       throw new BackinfrontError('update: data param must include the primaryKey')
     }
     if (primaryKeyValue !== data[this.primaryKey]) {
@@ -289,8 +288,7 @@ export default class Store {
 
     await this.#backinfront.addToSyncQueue({
       storeName: this.storeName,
-      primaryKey: savedPrimaryKeyValue,
-      data: refreshedData
+      primaryKey: savedPrimaryKeyValue
     }, transaction)
 
     // Force commit if the function own the transaction
