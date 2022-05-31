@@ -326,7 +326,7 @@ await store.findManyAndCount({
     //
 
     // Allow to filter deeeeeep properties
-    'grandma.mum.me': value
+    'grandma.mum.me': value,
 
     //
     // Available filters (open an issue if you need more)
