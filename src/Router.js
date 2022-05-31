@@ -38,11 +38,11 @@ export default class Router {
   routes = []
 
   /**
-  * @param {object} options
-  * @param {string} options.baseUrl
-  * @param {string} options.storeName
-  * @param {object} options.routes
-  */
+   * @param {object} options
+   * @param {string} options.baseUrl
+   * @param {string} options.storeName
+   * @param {object} options.routes
+   */
   constructor (options = {}) {
     // Throw an error if user input does not match the spec
     typecheck({
@@ -65,9 +65,9 @@ export default class Router {
   }
 
   /**
-  * Add a list of routes
-  * @param {array<object>} routes
-  */
+   * Add a list of routes
+   * @param {array<object>} routes
+   */
   addRoutes (routes) {
     for (const route of routes) {
       if (
@@ -84,12 +84,12 @@ export default class Router {
   }
 
   /**
-  * Add a route to the global list
-  * @param {object} routeParams
-  * @param {string} routeParams.method
-  * @param {string} routeParams.pathname
-  * @param {function} routeParams.handler
-  */
+   * Add a route to the global list
+   * @param {object} routeParams
+   * @param {string} routeParams.method
+   * @param {string} routeParams.pathname
+   * @param {function} routeParams.handler
+   */
   addRoute ({ method, pathname, handler }) {
     const url = new URL(joinPaths(this.baseUrl, pathname, '/')) // /!\ force a trailing slash /!\
     // Extract path params from url

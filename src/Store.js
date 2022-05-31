@@ -11,9 +11,9 @@ export default class Store {
   beforeCreate = (data) => null
 
   /**
-  * @param {object} backinfront
-  * @param {object} options
-  */
+   * @param {object} backinfront
+   * @param {object} options
+   */
   constructor (backinfront, options = {}) {
     typecheck({
       options: {
@@ -39,11 +39,11 @@ export default class Store {
   *****************************************************************/
 
   /**
-  * Compare 2 arrays: remove old items, update existing items, create new items
-  * @param {Array<object>} currentData
-  * @param {Array<object>} newData
-  * @return {Array<object>}
-  */
+   * Compare 2 arrays: remove old items, update existing items, create new items
+   * @param {Array<object>} currentData
+   * @param {Array<object>} newData
+   * @return {Array<object>}
+   */
   #updateArray (currentData, newData) {
     // TODO: find a way to not hardcode primary key 'id' (will require the store schema)
     // Create or update items
@@ -59,11 +59,11 @@ export default class Store {
   }
 
   /**
-  * Compare object properties recusively and return a new object
-  * @param {object} currentData
-  * @param {object} newData
-  * @return {object}
-  */
+   * Compare object properties recusively and return a new object
+   * @param {object} currentData
+   * @param {object} newData
+   * @return {object}
+   */
   #updateObject (currentData, newData) {
     const updatedData = {}
 
@@ -104,10 +104,10 @@ export default class Store {
   *****************************************************************/
 
   /**
-  * Count all items in the store
-  * @param {IDBTransaction} [transaction=null]
-  * @return {number}
-  */
+   * Count all items in the store
+   * @param {IDBTransaction} [transaction=null]
+   * @return {number}
+   */
   async count (transaction = null) {
     const store = await this.#backinfront.openStore(this.storeName, transaction ?? 'readonly')
     const count = await store.count()
@@ -115,11 +115,11 @@ export default class Store {
   }
 
   /**
-  * Get all items and the count
-  * @param {object} [condition] - list of filters (where, limit, offset, order)
-  * @param {IDBTransaction} [transaction=null]
-  * @return {object}
-  */
+   * Get all items and the count
+   * @param {object} [condition] - list of filters (where, limit, offset, order)
+   * @param {IDBTransaction} [transaction=null]
+   * @return {object}
+   */
   async findManyAndCount (condition = null, transaction = null) {
     const store = await this.#backinfront.openStore(this.storeName, transaction ?? 'readonly')
 
@@ -171,22 +171,22 @@ export default class Store {
   }
 
   /**
-  * Get all items
-  * @param {object} [condition=null] - list of filters (where, limit, offset, order)
-  * @param {IDBTransaction} [transaction=null]
-  * @return {Array<object>}
-  */
+   * Get all items
+   * @param {object} [condition=null] - list of filters (where, limit, offset, order)
+   * @param {IDBTransaction} [transaction=null]
+   * @return {Array<object>}
+   */
   async findMany (condition = null, transaction = null) {
     const { rows } = await this.findManyAndCount(condition, transaction)
     return rows
   }
 
   /**
-  * Get an item with a primary key
-  * @param {string} primaryKeyValue
-  * @param {IDBTransaction} [transaction=null]
-  * @return {object}
-  */
+   * Get an item with a primary key
+   * @param {string} primaryKeyValue
+   * @param {IDBTransaction} [transaction=null]
+   * @return {object}
+   */
   async findOne (primaryKeyValue, transaction = null) {
     // primaryKey is a condition if it's an object
     if (isObject(primaryKeyValue)) {
@@ -203,30 +203,30 @@ export default class Store {
   }
 
   /**
-  * Clear the store
-  * @param {IDBTransaction} [transaction=null]
-  */
+   * Clear the store
+   * @param {IDBTransaction} [transaction=null]
+   */
   async clear (transaction = null) {
     const store = await this.#backinfront.openStore(this.storeName, transaction || 'readwrite')
     await store.clear()
   }
 
   /**
-  * Delete one item
-  * @param {string} primaryKeyValue
-  * @param {IDBTransaction} [transaction=null]
-  */
+   * Delete one item
+   * @param {string} primaryKeyValue
+   * @param {IDBTransaction} [transaction=null]
+   */
   async delete (primaryKeyValue, transaction = null) {
     const store = await this.#backinfront.openStore(this.storeName, transaction || 'readwrite')
     await store.delete(primaryKeyValue)
   }
 
   /**
-  * Insert a new item
-  * @param {object} data
-  * @param {IDBTransaction} [transaction=null]
-  * @return {object}
-  */
+   * Insert a new item
+   * @param {object} data
+   * @param {IDBTransaction} [transaction=null]
+   * @return {object}
+   */
   async create (data, transaction = null) {
     let autocommit = false
 
@@ -256,12 +256,12 @@ export default class Store {
   }
 
   /**
-  * Update an item (or insert if not already existing)
-  * @param {string} primaryKeyValue
-  * @param {object} data
-  * @param {IDBTransaction} [transaction=null]
-  * @return {object}
-  */
+   * Update an item (or insert if not already existing)
+   * @param {string} primaryKeyValue
+   * @param {object} data
+   * @param {IDBTransaction} [transaction=null]
+   * @return {object}
+   */
   async update (primaryKeyValue, data, transaction = null) {
     let autocommit = false
 

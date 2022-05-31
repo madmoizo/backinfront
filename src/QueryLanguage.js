@@ -47,16 +47,16 @@ export default class QueryLanguage {
      */
     $in: (storeValue, value) => value.includes(storeValue),
     /**
-    * @param {any} storeValue
-    * @param {any} value
-    * @return {boolean}
-    */
+     * @param {any} storeValue
+     * @param {any} value
+     * @return {boolean}
+     */
     $notin: (storeValue, value) => !value.includes(storeValue),
     /**
-    * @param {any} storeValue
-    * @param {any} value
-    * @return {boolean}
-    */
+     * @param {any} storeValue
+     * @param {any} value
+     * @return {boolean}
+     */
     $like: (storeValue, value) => value[0](storeValue).includes(value[0](value[1])),
     /**
      * @param {any} storeValue
@@ -73,10 +73,10 @@ export default class QueryLanguage {
   }
 
   /**
-  * Add a custom where operator
-  * @param {string} operatorName - where clause
-  * @param {function} operatorAction - item to compare the condition with
-  */
+   * Add a custom where operator
+   * @param {string} operatorName - where clause
+   * @param {function} operatorAction - item to compare the condition with
+   */
   static addOperator (operatorName, operatorAction) {
     if (!operatorName.startsWith('$') || operatorName.length === 1) {
       throw new BackinfrontError('operator\'s name must start with $')
@@ -86,11 +86,11 @@ export default class QueryLanguage {
   }
 
   /**
-  * Check if the where condition is valid
-  * @param {object} condition - where clause
-  * @param {object} row - item to compare the condition with
-  * @return {boolean}
-  */
+   * Check if the where condition is valid
+   * @param {object} condition - where clause
+   * @param {object} row - item to compare the condition with
+   * @return {boolean}
+   */
   static isConditionValid (condition, row) {
     if (isObject(condition)) {
       return Object.entries(condition).every(([conditionName, conditionValue]) => {

@@ -18,11 +18,11 @@ import Store from './Store.js'
 
 const DB_OPERATIONS = {
   /**
-     * @param {IDBTransaction} transaction
-     * @param {object} options
-     * @param {string} options.storeName
-     * @param {string} options.keyPath
-     */
+   * @param {IDBTransaction} transaction
+   * @param {object} options
+   * @param {string} options.storeName
+   * @param {string} options.keyPath
+   */
   createStore (transaction, { storeName, keyPath }) {
     transaction.db.createObjectStore(storeName, { keyPath }) // nullish keyPath is ignored
   },
@@ -91,27 +91,27 @@ export default class Backinfront {
   formatDataBeforeSave = (data) => JSON.parse(JSON.stringify(data)) // by default, easiest way to convert Date to json & clean an object
 
   /**
-  * @constructor
-  * @param {object} options
-  * @param {string} options.databaseName
-  * @param {Array<object>} options.stores - list of store's configurations
-  * @param {Array<object>} options.router - list of store's configurations
-  * @param {string} options.populateUrl - part of url corresponding to the populate endpoint
-  * @param {string} options.syncUrl - part of url corresponding to the sync endpoint
-  * @param {function|false} [options.authentication] - must return a JWT to authenticate populate & sync requests
-  * @param {function} [options.collectionCountKey]
-  * @param {function} [options.collectionDataKey]
-  * @param {function} [options.routeState] - must return an object with data available on every offline handled requests
-  * @param {function} [options.formatDataBeforeSave] - format data before insertion into indexeddb
-  * @param {function} [options.formatRouteSearchParam] - format Request's search params (example: transform comma separated string into array)
-  * @param {function} [options.formatRoutePathParam] - format Route's customs params
-  * @param {function} [options.onRouteSuccess]
-  * @param {function} [options.onRouteError]
-  * @param {function} [options.onPopulateSuccess]
-  * @param {function} [options.onPopulateError]
-  * @param {function} [options.onSyncSuccess]
-  * @param {function} [options.onSyncError]
-  */
+   * @constructor
+   * @param {object} options
+   * @param {string} options.databaseName
+   * @param {Array<object>} options.stores - list of store's configurations
+   * @param {Array<object>} options.router - list of store's configurations
+   * @param {string} options.populateUrl - part of url corresponding to the populate endpoint
+   * @param {string} options.syncUrl - part of url corresponding to the sync endpoint
+   * @param {function|false} [options.authentication] - must return a JWT to authenticate populate & sync requests
+   * @param {function} [options.collectionCountKey]
+   * @param {function} [options.collectionDataKey]
+   * @param {function} [options.routeState] - must return an object with data available on every offline handled requests
+   * @param {function} [options.formatDataBeforeSave] - format data before insertion into indexeddb
+   * @param {function} [options.formatRouteSearchParam] - format Request's search params (example: transform comma separated string into array)
+   * @param {function} [options.formatRoutePathParam] - format Route's customs params
+   * @param {function} [options.onRouteSuccess]
+   * @param {function} [options.onRouteError]
+   * @param {function} [options.onPopulateSuccess]
+   * @param {function} [options.onPopulateError]
+   * @param {function} [options.onSyncSuccess]
+   * @param {function} [options.onSyncError]
+   */
   constructor (options = {}) {
     // Throw an error if user input does not match the spec
     typecheck({
@@ -162,6 +162,171 @@ export default class Backinfront {
         )
       }
     })
+  }
+
+  /*****************************************************************
+  * Routing process on offline fetch
+  *****************************************************************/
+
+  /**
+   * Find a route in the global list
+   * @param {Request} request
+   * @return {object | undefined}
+   */
+  #findRouteFromRequest (request) {
+    const url = new URL(request.url)
+    const routeLocation = this.routes[url.origin]?.[request.method]?.[url.pathname.match(/[^/]+/g).length]
+    return routeLocation?.find(route => route.regexp.test(`${url.origin}${url.pathname}`))
+  }
+
+  /**
+   * Route handler inside service worker fetch
+   * @param {object} route
+   * @param {Request} request
+   * @return {Response}
+   */
+  async #getRouteResponse (route, request) {
+    const ctx = {
+      request,
+      state: {},
+      searchParams: {},
+      pathParams: {},
+      body: null,
+      transaction: null
+    }
+
+    const url = new URL(request.url)
+
+    // Add search params to the context
+    for (const [key, value] of url.searchParams) {
+      ctx.searchParams[key] = this.formatRouteSearchParam(value)
+    }
+
+    // Find params
+    // .match() return Array or null
+    const matchs = `${url.origin}${url.pathname}`.match(route.regexp)
+    if (matchs) {
+      // Remove the first match (the url itself)
+      matchs.shift()
+      // Map route params
+      for (const [idx, value] of matchs.entries()) {
+        ctx.pathParams[route.pathParams[idx]] = this.formatRoutePathParam(value)
+      }
+    }
+
+    // Merge state with user data
+    ctx.state = { ...ctx.state, ...this.routeState(request) }
+
+    if (['POST', 'PUT', 'PATCH'].includes(request.method)) {
+      ctx.body = await (request.clone()).json()
+    }
+
+    // Provide a global transaction
+    ctx.transaction = await this.getTransaction('readwrite')
+
+    // Try to execute the route action
+    let routeHandlerResult
+    let routeHandlerError
+    let response
+
+    try {
+      routeHandlerResult = await route.handler(ctx, this.stores)
+    } catch (error) {
+      routeHandlerError = error
+    }
+
+    if (routeHandlerError) {
+      // Force the abortion
+      // throw an error if the transaction has been completed prematurely
+      try { ctx.transaction?.abort() } catch {}
+      this.onRouteError({ route, error: routeHandlerError })
+      response = new Response(JSON.stringify(routeHandlerResult))
+    } else {
+      // Force the commit
+      // throw an error if the transaction has been completed prematurely
+      try { ctx.transaction?.commit() } catch {}
+      this.onRouteSuccess({ route, result: routeHandlerResult })
+      response = new Response(undefined, {
+        status: 500,
+        statustext: `Route handler error: ${routeHandlerError.message}`
+      })
+    }
+
+    return response
+  }
+
+  /*****************************************************************
+  * Process stores & routers
+  *****************************************************************/
+
+  /**
+   * Add multiple stores in a single call
+   * @param {Array<object>} storesParams
+   */
+  addStores (storesParams) {
+    for (const storeParams of storesParams) {
+      this.addStore(storeParams)
+    }
+  }
+
+  /**
+   * Add a store
+   * @param {object} storeParams
+   * @return {object}
+   */
+  addStore (storeParams) {
+    const store = new Store(this, storeParams)
+    // Add the store to the hashtable
+    this.stores[store.storeName] = store
+    // Add the store to the database schema
+    this.#databaseSchema[store.storeName] = {}
+    if (store.primaryKey) {
+      this.#databaseSchema[store.storeName].keyPath = store.primaryKey
+    }
+    if (store.indexes) {
+      this.#databaseSchema[store.storeName].indexes = store.indexes
+    }
+
+    return store
+  }
+
+  /**
+   * Add multiple routers in a single call
+   * @param {Array<object>} routersParams
+   */
+  addRouters (routersParams) {
+    for (const routerParams of routersParams) {
+      this.addRouter(routerParams)
+    }
+  }
+
+  /**
+   * Add a router
+   * @param {object} routerParams
+   * @return {object}
+   */
+  addRouter (routerParams) {
+    const router = new Router(routerParams)
+
+    // Add routes to the origin list
+    for (const route of router.routes) {
+      const target = getDeepValue(this.routes, [route.url.origin, route.method, route.length], [])
+      // Add the route
+      target.push(route)
+      // Reorder
+      target.sort((a, b) => b.specificity - a.specificity)
+    }
+
+    return router
+  }
+
+  /**
+   * Add a custom where operator
+   * @param {string} operatorName - where clause
+   * @param {function} operatorAction - item to compare the condition with
+   */
+  addQueryOperator (operatorName, operatorAction) {
+    QueryLanguage.addOperator(operatorName, operatorAction)
   }
 
   /*****************************************************************
@@ -340,9 +505,9 @@ export default class Backinfront {
   }
 
   /**
-  * Delete the database
-  * @example Can be useful to clean a user profile on logout for example
-  */
+   * Delete the database
+   * @example Can be useful to clean a user profile on logout for example
+   */
   async destroy () {
     await deleteDB(this.databaseName)
     this.#databaseConfigurationStarted = false
@@ -374,12 +539,12 @@ export default class Backinfront {
   *****************************************************************/
 
   /**
-  * Fetch helper to build the request init param
-  * @param {object} body
-  * @param {object} options
-  * @param {object} options.method
-  * @param {object} [options.body]
-  */
+   * Fetch helper to build the request init param
+   * @param {object} body
+   * @param {object} options
+   * @param {object} options.method
+   * @param {object} [options.body]
+   */
   async #buildRequestInit ({ method, body }) {
     const requestInit = {
       method,
@@ -407,14 +572,14 @@ export default class Backinfront {
   }
 
   /**
-  * Fetch online data
-  * @param {object} options
-  * @param {string} options.method
-  * @param {string} options.url
-  * @param {object} [options.searchParams]
-  * @param {object} [options.body]
-  * @return {object}
-  */
+   * Fetch online data
+   * @param {object} options
+   * @param {string} options.method
+   * @param {string} options.url
+   * @param {object} [options.searchParams]
+   * @param {object} [options.body]
+   * @return {object}
+   */
   async #fetch ({ method, url, searchParams, body }) {
     const requestUrl = `${url}${stringifySearchParams(searchParams)}`
     const requestInit = await this.#buildRequestInit({ method, body })
@@ -435,185 +600,16 @@ export default class Backinfront {
   }
 
   /*****************************************************************
-  * Routing process on offline fetch
-  *****************************************************************/
-
-  /**
-  * Find a route in the global list
-  * @param {Request} request
-  * @return {object | undefined}
-  */
-  #findRouteFromRequest (request) {
-    const url = new URL(request.url)
-    const routeLocation = this.routes[url.origin]?.[request.method]?.[url.pathname.match(/[^/]+/g).length]
-    return routeLocation?.find(route => route.regexp.test(`${url.origin}${url.pathname}`))
-  }
-
-  /**
-  * Route handler inside service worker fetch
-  * @param {object} route
-  * @param {Request} request
-  * @return {Response}
-  */
-  async #getRouteResponse (route, request) {
-    const ctx = {
-      request,
-      state: {},
-      searchParams: {},
-      pathParams: {},
-      body: null,
-      transaction: null
-    }
-
-    const url = new URL(request.url)
-
-    // Add search params to the context
-    for (const [key, value] of url.searchParams) {
-      ctx.searchParams[key] = this.formatRouteSearchParam(value)
-    }
-
-    // Find params
-    // .match() return Array or null
-    const matchs = `${url.origin}${url.pathname}`.match(route.regexp)
-    if (matchs) {
-      // Remove the first match (the url itself)
-      matchs.shift()
-      // Map route params
-      for (const [idx, value] of matchs.entries()) {
-        ctx.pathParams[route.pathParams[idx]] = this.formatRoutePathParam(value)
-      }
-    }
-
-    // Merge state with user data
-    ctx.state = { ...ctx.state, ...this.routeState(request) }
-
-    if (['POST', 'PUT', 'PATCH'].includes(request.method)) {
-      ctx.body = await (request.clone()).json()
-    }
-
-    // Provide a global transaction
-    ctx.transaction = await this.getTransaction('readwrite')
-
-    // Try to execute the route action
-    let routeHandlerResult
-    let routeHandlerError
-
-    try {
-      routeHandlerResult = await route.handler(ctx, this.stores)
-    } catch (error) {
-      routeHandlerError = error
-    }
-
-    if (routeHandlerError) {
-      // Force the abortion
-      // throw an error if the transaction has been completed prematurely
-      try { ctx.transaction?.abort() } catch {}
-
-      this.onRouteError({ route, error: routeHandlerError })
-      return new Response(undefined, {
-        status: 500,
-        statustext: `Route handler error: ${routeHandlerError.message}`
-      })
-    }
-
-    // Force the commit
-    // throw an error if the transaction has been completed prematurely
-    try { ctx.transaction?.commit() } catch {}
-
-    this.onRouteSuccess({ route, result: routeHandlerResult })
-    return routeHandlerResult instanceof Response
-      ? routeHandlerResult
-      : new Response(JSON.stringify(routeHandlerResult))
-  }
-
-  /*****************************************************************
-  * Process stores & routers
-  *****************************************************************/
-
-  /**
-  * Add multiple stores in a single call
-  * @param {Array<object>} storesParams
-  */
-  addStores (storesParams) {
-    for (const storeParams of storesParams) {
-      this.addStore(storeParams)
-    }
-  }
-
-  /**
-  * Add a store
-  * @param {object} storeParams
-  * @return {object}
-  */
-  addStore (storeParams) {
-    const store = new Store(this, storeParams)
-    // Add the store to the hashtable
-    this.stores[store.storeName] = store
-    // Add the store to the database schema
-    this.#databaseSchema[store.storeName] = {}
-    if (store.primaryKey) {
-      this.#databaseSchema[store.storeName].keyPath = store.primaryKey
-    }
-    if (store.indexes) {
-      this.#databaseSchema[store.storeName].indexes = store.indexes
-    }
-
-    return store
-  }
-
-  /**
-  * Add multiple routers in a single call
-  * @param {Array<object>} routersParams
-  */
-  addRouters (routersParams) {
-    for (const routerParams of routersParams) {
-      this.addRouter(routerParams)
-    }
-  }
-
-  /**
-  * Add a router
-  * @param {object} routerParams
-  * @return {object}
-  */
-  addRouter (routerParams) {
-    const router = new Router(routerParams)
-
-    // Add routes to the origin list
-    for (const route of router.routes) {
-      const target = getDeepValue(this.routes, [route.url.origin, route.method, route.length], [])
-      // Add the route
-      target.push(route)
-      // Reorder
-      target.sort((a, b) => b.specificity - a.specificity)
-    }
-
-    return router
-  }
-
-  /**
-  * Add a custom where operator
-  * @param {string} operatorName - where clause
-  * @param {function} operatorAction - item to compare the condition with
-  */
-  addQueryOperator (operatorName, operatorAction) {
-    QueryLanguage.addOperator(operatorName, operatorAction)
-  }
-
-
-  /*****************************************************************
   * Sync management
   *****************************************************************/
 
   /**
-  * Fill the database with initial data
-  * @param {Array<string>} storesToInclude
-  */
-  async populate (storesToInclude = []) {
+   * Fill the database with initial data
+   * @param {Array<string>} stores
+   */
+  async populate (stores = []) {
     // Process filter options
-    const storeNames = Object.entries(this.stores)
-      .filter(([storeName, store]) => storesToInclude.includes(storeName))
-      .map(([storeName, store]) => storeName)
+    const storeNames = Object.keys(this.stores).filter(storeName => stores.includes(storeName))
 
     try {
       const response = await this.#fetch({
@@ -643,8 +639,8 @@ export default class Backinfront {
   }
 
   /**
-  * Sync the database
-  */
+   * Sync the database
+   */
   async sync () {
     if (this.#syncInProgress) {
       return null
