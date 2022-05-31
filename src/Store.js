@@ -105,11 +105,11 @@ export default class Store {
 
   /**
   * Count all items in the store
-  * @param {IDBTransaction} [transaction]
+  * @param {IDBTransaction} [transaction=null]
   * @return {number}
   */
   async count (transaction = null) {
-    const store = await this.#backinfront.openStore(this.storeName, transaction || 'readonly')
+    const store = await this.#backinfront.openStore(this.storeName, transaction ?? 'readonly')
     const count = await store.count()
     return count
   }
@@ -117,19 +117,16 @@ export default class Store {
   /**
   * Get all items and the count
   * @param {object} [condition] - list of filters (where, limit, offset, order)
-  * @param {IDBTransaction} [transaction]
+  * @param {IDBTransaction} [transaction=null]
   * @return {object}
   */
   async findManyAndCount (condition = null, transaction = null) {
-    const store = await this.#backinfront.openStore(this.storeName, transaction || 'readonly')
+    const store = await this.#backinfront.openStore(this.storeName, transaction ?? 'readonly')
 
     let rows = []
     let count = 0
 
-    if (!condition) {
-      rows = await store.getAll()
-      count = rows.length
-    } else {
+    if (condition) {
       const limit = parseInt(condition.limit) || null
       const offset = parseInt(condition.offset) || null
 
@@ -162,6 +159,9 @@ export default class Store {
 
         cursor = await cursor.continue()
       }
+    } else {
+      rows = await store.getAll()
+      count = rows.length
     }
 
     return {
@@ -172,8 +172,8 @@ export default class Store {
 
   /**
   * Get all items
-  * @param {object} [condition] - list of filters (where, limit, offset, order)
-  * @param {IDBTransaction} [transaction]
+  * @param {object} [condition=null] - list of filters (where, limit, offset, order)
+  * @param {IDBTransaction} [transaction=null]
   * @return {Array<object>}
   */
   async findMany (condition = null, transaction = null) {
@@ -184,7 +184,7 @@ export default class Store {
   /**
   * Get an item with a primary key
   * @param {string} primaryKeyValue
-  * @param {IDBTransaction} [transaction]
+  * @param {IDBTransaction} [transaction=null]
   * @return {object}
   */
   async findOne (primaryKeyValue, transaction = null) {
@@ -204,7 +204,7 @@ export default class Store {
 
   /**
   * Clear the store
-  * @param {IDBTransaction} [transaction]
+  * @param {IDBTransaction} [transaction=null]
   */
   async clear (transaction = null) {
     const store = await this.#backinfront.openStore(this.storeName, transaction || 'readwrite')
@@ -214,7 +214,7 @@ export default class Store {
   /**
   * Delete one item
   * @param {string} primaryKeyValue
-  * @param {IDBTransaction} [transaction]
+  * @param {IDBTransaction} [transaction=null]
   */
   async delete (primaryKeyValue, transaction = null) {
     const store = await this.#backinfront.openStore(this.storeName, transaction || 'readwrite')
@@ -224,7 +224,7 @@ export default class Store {
   /**
   * Insert a new item
   * @param {object} data
-  * @param {IDBTransaction} [transaction]
+  * @param {IDBTransaction} [transaction=null]
   * @return {object}
   */
   async create (data, transaction = null) {
@@ -247,7 +247,7 @@ export default class Store {
       primaryKey: savedPrimaryKeyValue
     }, transaction)
 
-    // Force commit if the function own the transaction
+    // Force the commit if the function own the transaction
     if (autocommit) {
       transaction.commit?.()
     }
@@ -259,7 +259,7 @@ export default class Store {
   * Update an item (or insert if not already existing)
   * @param {string} primaryKeyValue
   * @param {object} data
-  * @param {IDBTransaction} [transaction]
+  * @param {IDBTransaction} [transaction=null]
   * @return {object}
   */
   async update (primaryKeyValue, data, transaction = null) {
@@ -291,7 +291,7 @@ export default class Store {
       primaryKey: savedPrimaryKeyValue
     }, transaction)
 
-    // Force commit if the function own the transaction
+    // Force the commit if the function own the transaction
     if (autocommit) {
       transaction.commit?.()
     }
