@@ -43,8 +43,11 @@ export default class Backinfront {
     }
   }
 
-  routes = {}
+  databaseName = ''
   stores = {}
+  routes = {}
+  populateUrl = ''
+  syncUrl = ''
   authentication = false
   collectionCountKey = 'count'
   collectionDataKey = 'rows'
@@ -167,13 +170,12 @@ export default class Backinfront {
     const url = new URL(request.url)
 
     // Add search params to the context
-    for (const [key, value] of url.searchParams) {
+    for (const [key, value] of url.searchParams.entries()) {
       ctx.searchParams[key] = this.formatRouteSearchParam(value)
     }
 
     // Find params
-    // .match() return Array or null
-    const matchs = `${url.origin}${url.pathname}`.match(route.regexp)
+    const matchs = `${url.origin}${url.pathname}`.match(route.regexp) // .match() return an Array or null
     if (matchs) {
       // Remove the first match (the url itself)
       matchs.shift()
@@ -207,7 +209,7 @@ export default class Backinfront {
     if (routeHandlerError) {
       // Force the abortion
       // throw an error if the transaction has been completed prematurely
-      try { ctx.transaction?.abort() } catch {}
+      try { ctx.transaction.abort() } catch {}
       this.onRouteError({ route, error: routeHandlerError })
       response = new Response(undefined, {
         status: 500,
@@ -216,7 +218,7 @@ export default class Backinfront {
     } else {
       // Force the commit
       // throw an error if the transaction has been completed prematurely
-      try { ctx.transaction?.commit() } catch {}
+      try { ctx.transaction.commit() } catch {}
       this.onRouteSuccess({ route, result: routeHandlerResult })
       response = new Response(JSON.stringify(routeHandlerResult))
     }
@@ -230,21 +232,21 @@ export default class Backinfront {
 
   /**
    * Add multiple stores in a single call
-   * @param {Array<object>} storesParams
+   * @param {Array<object>} storesOptions
    */
-  addStores (storesParams) {
-    for (const storeParams of storesParams) {
-      this.addStore(storeParams)
+  addStores (storesOptions) {
+    for (const storeOptions of storesOptions) {
+      this.addStore(storeOptions)
     }
   }
 
   /**
    * Add a store
-   * @param {object} storeParams
+   * @param {object} storeOptions
    * @return {object}
    */
-  addStore (storeParams) {
-    const store = new Store(this, storeParams)
+  addStore (storeOptions) {
+    const store = new Store(this, storeOptions)
     // Add the store to the hashtable
     this.stores[store.storeName] = store
     // Add the store to the database schema
@@ -258,23 +260,23 @@ export default class Backinfront {
 
   /**
    * Add multiple routers in a single call
-   * @param {Array<object>} routersParams
+   * @param {Array<object>} routersOptions
    */
-  addRouters (routersParams) {
-    for (const routerParams of routersParams) {
-      this.addRouter(routerParams)
+  addRouters (routersOptions) {
+    for (const routerOptions of routersOptions) {
+      this.addRouter(routerOptions)
     }
   }
 
   /**
    * Add a router
-   * @param {object} routerParams
+   * @param {object} routerOptions
    * @return {object}
    */
-  addRouter (routerParams) {
-    const router = new Router(routerParams)
+  addRouter (routerOptions) {
+    const router = new Router(routerOptions)
 
-    // Add routes to the origin list
+    // Add routes to the list
     for (const route of router.routes) {
       const target = getDeepValue(this.routes, [route.url.origin, route.method, route.length], [])
       // Add the route
@@ -597,7 +599,7 @@ export default class Backinfront {
 
       // Deduplicate & retrieve fresh data
       const clientData = await Promise.all(
-        deduplicateArray(syncQueueItems, ['primaryKey', 'modelName']).map(async ({ createdAt, storeName, primaryKey }) => ({
+        deduplicateArray(syncQueueItems, ['storeName', 'primaryKey']).map(async ({ createdAt, storeName, primaryKey }) => ({
           createdAt,
           storeName,
           primaryKey,
