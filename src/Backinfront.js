@@ -209,16 +209,16 @@ export default class Backinfront {
       // throw an error if the transaction has been completed prematurely
       try { ctx.transaction?.abort() } catch {}
       this.onRouteError({ route, error: routeHandlerError })
-      response = new Response(JSON.stringify(routeHandlerResult))
+      response = new Response(undefined, {
+        status: 500,
+        statustext: `Route handler error: ${routeHandlerError.message}`
+      })
     } else {
       // Force the commit
       // throw an error if the transaction has been completed prematurely
       try { ctx.transaction?.commit() } catch {}
       this.onRouteSuccess({ route, result: routeHandlerResult })
-      response = new Response(undefined, {
-        status: 500,
-        statustext: `Route handler error: ${routeHandlerError.message}`
-      })
+      response = new Response(JSON.stringify(routeHandlerResult))
     }
 
     return response
