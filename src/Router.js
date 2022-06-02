@@ -1,4 +1,4 @@
-import { joinPaths, mergeObject, typecheck } from 'utililib'
+import { has, joinPaths, mergeObject, typecheck } from 'utililib'
 
 
 const ROUTES_PRESETS = {
@@ -71,8 +71,8 @@ export default class Router {
   #addRoutes (routes) {
     for (const route of routes) {
       if (
-        'storeName' in route &&
-        'presets' in route
+        has(route, 'storeName') &&
+        has(route, 'presets')
       ) {
         for (const preset of route.presets) {
           this.#addRoute(ROUTES_PRESETS[preset](route.storeName))
@@ -85,10 +85,10 @@ export default class Router {
 
   /**
    * Add a route to the global list
-   * @param {object} routeParams
-   * @param {string} routeParams.method
-   * @param {string} routeParams.pathname
-   * @param {function} routeParams.handler
+   * @param {object} options
+   * @param {string} options.method
+   * @param {string} options.pathname
+   * @param {function} options.handler
    */
   #addRoute ({ method, pathname, handler }) {
     const url = new URL(joinPaths(this.baseUrl, pathname, '/')) // /!\ force a trailing slash /!\
