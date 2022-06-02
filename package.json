@@ -1,6 +1,6 @@
 {
   "name": "backinfront",
-  "version": "3.1.0",
+  "version": "3.1.1",
   "description": "A backend for your frontend, which sync!",
   "author": "Matthieu Dambrune <matthieu.dambrune@gmail.com>",
   "license": "ISC",
