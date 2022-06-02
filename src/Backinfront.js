@@ -341,14 +341,14 @@ export default class Backinfront {
               currentIndexKeyPath !== newIndexKeyPath
             ) {
               databaseMigrations.push(
-                (t) => deleteIndex(t, { storeName, indexName }),
-                (t) => createIndex(t, { storeName, indexName, indexKeyPath: newIndexKeyPath })
+                (t) => deleteIndex(t, storeName, indexName),
+                (t) => createIndex(t, storeName, indexName, newIndexKeyPath)
               )
             }
           // Delete index
           } else {
             databaseMigrations.push(
-              (t) => deleteIndex(t, { storeName, indexName })
+              (t) => deleteIndex(t, storeName, indexName)
             )
           }
         }
@@ -357,7 +357,7 @@ export default class Backinfront {
         for (const [indexName, indexKeyPath] of Object.entries(newStoreSchema.indexes)) {
           if (!has(currentStoreSchema.indexes, indexName)) {
             databaseMigrations.push(
-              (t) => createIndex(t, { storeName, indexName, indexKeyPath })
+              (t) => createIndex(t, storeName, indexName, indexKeyPath)
             )
           }
         }
@@ -373,12 +373,12 @@ export default class Backinfront {
     for (const [storeName, newStoreSchema] of Object.entries(newDatabaseSchema)) {
       if (!has(currentDatabaseSchema, storeName)) {
         databaseMigrations.push(
-          (t) => createStore(t, { storeName, keyPath: newStoreSchema.keyPath })
+          (t) => createStore(t, storeName, newStoreSchema.keyPath)
         )
 
         for (const [indexName, indexKeyPath] of Object.entries(newStoreSchema.indexes)) {
           databaseMigrations.push(
-            (t) => createIndex(t, { storeName, indexName, indexKeyPath })
+            (t) => createIndex(t, storeName, indexName, indexKeyPath)
           )
         }
       }
