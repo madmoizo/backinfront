@@ -1,5 +1,5 @@
-import { openDB, deleteDB } from 'idb'
 import {
+  has,
   deduplicateArray,
   getDeepValue,
   isAfterDate,
@@ -10,58 +10,26 @@ import {
   typecheck,
   waitUntil
 } from 'utililib'
-import BackinfrontError from './BackinfrontError.js'
+import {
+  openDB,
+  deleteDB,
+  createStore,
+  createIndex,
+  deleteIndex,
+  deleteStore
+} from './services/database.js'
+import CustomError from './CustomError.js'
 import QueryLanguage from './QueryLanguage.js'
 import Router from './Router.js'
 import Store from './Store.js'
 
 
-const DB_OPERATIONS = {
-  /**
-   * @param {IDBTransaction} transaction
-   * @param {object} options
-   * @param {string} options.storeName
-   * @param {string} options.keyPath
-   */
-  createStore (transaction, { storeName, keyPath }) {
-    transaction.db.createObjectStore(storeName, { keyPath }) // nullish keyPath is ignored
-  },
-  /**
-   * @param {IDBTransaction} transaction
-   * @param {object} options
-   * @param {string} options.storeName
-   */
-  deleteStore (transaction, { storeName }) {
-    transaction.db.deleteObjectStore(storeName)
-  },
-  /**
-   * @param {IDBTransaction} transaction
-   * @param {object} options
-   * @param {string} options.storeName
-   * @param {string} options.indexName
-   * @param {string} options.indexKeyPath
-   */
-  createIndex (transaction, { storeName, indexName, indexKeyPath }) {
-    transaction.objectStore(storeName).createIndex(indexName, indexKeyPath)
-  },
-  /**
-   * @param {IDBTransaction} transaction
-   * @param {object} options
-   * @param {string} options.storeName
-   * @param {string} options.indexName
-   */
-  deleteIndex (transaction, { storeName, indexName }) {
-    transaction.objectStore(storeName).deleteIndex(indexName)
-  }
-}
-
-
 export default class Backinfront {
-  #databaseConfigurationStarted = false
-  #databaseConfigurationEnded = false
-  #syncInProgress = false
   #metadataStoreName = '__Metadata'
   #syncQueueStoreName = '__SyncQueue'
+  #syncInProgress = false
+  #databaseConfigurationStarted = false
+  #databaseConfigurationEnded = false
   #databaseSchema = {
     [this.#metadataStoreName]: {
       keyPath: null
@@ -222,7 +190,7 @@ export default class Backinfront {
     }
 
     // Provide a global transaction
-    ctx.transaction = await this.getTransaction('readwrite')
+    ctx.transaction = await this.$openTransaction('readwrite')
 
     // Try to execute the route action
     let routeHandlerResult
@@ -321,9 +289,9 @@ export default class Backinfront {
   }
 
   /**
-   * Add a custom where operator
-   * @param {string} operatorName - where clause
-   * @param {function} operatorAction - item to compare the condition with
+   * Add a new operator to the query language
+   * @param {string} operatorName
+   * @param {function} operatorAction
    */
   addQueryOperator (operatorName, operatorAction) {
     QueryLanguage.addOperator(operatorName, operatorAction)
@@ -337,120 +305,91 @@ export default class Backinfront {
    */
   async #configureDatabase () {
     const databaseMigrations = []
-    const databaseSchemaNew = this.#databaseSchema
+    const currentDatabaseSchema = {}
+    const newDatabaseSchema = this.#databaseSchema
 
     // Parse the current database schema
-    const databaseSchemaOld = {}
     const db = await openDB(this.databaseName)
+    // The version of a non existing database is always 1
     const databaseVersion = db.version
-
-    if (db.objectStoreNames.length) { // https://developer.mozilla.org/fr/docs/Web/API/DOMStringList
+    // db.objectStoreNames & store.indexNames are DOMStringList
+    // https://developer.mozilla.org/fr/docs/Web/API/DOMStringList
+    if (db.objectStoreNames.length) {
       const transaction = db.transaction(db.objectStoreNames, 'readonly')
       for (const storeName of db.objectStoreNames) {
         const store = transaction.objectStore(storeName)
-        const indexes = {}
-        for (const indexName of store.indexNames) {
-          indexes[indexName] = store.index(indexName).keyPath
-        }
-        databaseSchemaOld[storeName] = {
+        currentDatabaseSchema[storeName] = {
           keyPath: store.keyPath,
-          indexes: indexes
+          indexes: Object.fromEntries(store.indexNames.map(indexName => [indexName, store.index(indexName).keyPath]))
         }
       }
     }
     db.close()
 
     // Delete stores, [Delete, Update, Create] indexes
-    for (const storeNameOld in databaseSchemaOld) {
-      if (storeNameOld in databaseSchemaNew) {
-        const storeNew = databaseSchemaNew[storeNameOld]
-        const storeOld = databaseSchemaOld[storeNameOld]
+    for (const [storeName, currentStoreSchema] of Object.entries(currentDatabaseSchema)) {
+      if (has(newDatabaseSchema, storeName)) {
+        const newStoreSchema = newDatabaseSchema[storeName]
 
         // [Delete, Update] indexes
-        for (const indexNameOld in storeOld.indexes) {
+        for (const [indexName, currentIndexKeyPath] of Object.entries(currentStoreSchema.indexes)) {
           // Update index
-          if (indexNameOld in storeNew.indexes) {
-            const indexKeyPathOld = storeOld.indexes[indexNameOld]
-            const indexKeyPathNew = storeNew.indexes[indexNameOld]
+          if (has(newStoreSchema.indexes, indexName)) {
+            const newIndexKeyPath = newStoreSchema.indexes[indexName]
             if (
-              (isArray(indexKeyPathNew) && isArray(indexKeyPathOld) && indexKeyPathOld.some((item, position) => item !== indexKeyPathNew[position])) ||
-              indexKeyPathOld !== indexKeyPathNew
+              (isArray(currentIndexKeyPath) && isArray(newIndexKeyPath) && !currentIndexKeyPath.every((item, position) => item === newIndexKeyPath[position])) ||
+              currentIndexKeyPath !== newIndexKeyPath
             ) {
-              databaseMigrations.push({
-                type: 'deleteIndex',
-                params: {
-                  storeName: storeNameOld,
-                  indexName: indexNameOld
-                }
-              }, {
-                type: 'createIndex',
-                params: {
-                  storeName: storeNameOld,
-                  indexName: indexNameOld,
-                  indexKeyPath: indexKeyPathNew
-                }
-              })
+              databaseMigrations.push(
+                (t) => deleteIndex(t, { storeName, indexName }),
+                (t) => createIndex(t, { storeName, indexName, indexKeyPath: newIndexKeyPath })
+              )
             }
           // Delete index
           } else {
-            databaseMigrations.push({
-              type: 'deleteIndex',
-              params: {
-                storeName: storeNameOld,
-                indexName: indexNameOld
-              }
-            })
+            databaseMigrations.push(
+              (t) => deleteIndex(t, { storeName, indexName })
+            )
           }
         }
 
         // Create indexes
-        for (const indexNameNew in storeNew.indexes) {
-          if (!(indexNameNew in storeOld.indexes)) {
-            databaseMigrations.push({
-              type: 'createIndex',
-              params: {
-                storeName: storeNameOld,
-                indexName: indexNameNew,
-                indexKeyPath: storeNew.indexes[indexNameNew]
-              }
-            })
+        for (const [indexName, indexKeyPath] of Object.entries(newStoreSchema.indexes)) {
+          if (!has(currentStoreSchema.indexes, indexName)) {
+            databaseMigrations.push(
+              (t) => createIndex(t, { storeName, indexName, indexKeyPath })
+            )
           }
         }
+      // Delete store
+      } else {
+        databaseMigrations.push(
+          (t) => deleteStore(t, { storeName })
+        )
       }
     }
 
     // Create stores
-    for (const storeNameNew in databaseSchemaNew) {
-      if (!(storeNameNew in databaseSchemaOld)) {
-        const storeNew = databaseSchemaNew[storeNameNew]
+    for (const [storeName, newStoreSchema] of Object.entries(newDatabaseSchema)) {
+      if (!has(currentDatabaseSchema, storeName)) {
+        databaseMigrations.push(
+          (t) => createStore(t, { storeName, keyPath: newStoreSchema.keyPath })
+        )
 
-        databaseMigrations.push({
-          type: 'createStore',
-          params: {
-            storeName: storeNameNew,
-            keyPath: storeNew.keyPath
-          }
-        })
-
-        for (const indexNameNew in storeNew.indexes) {
-          databaseMigrations.push({
-            type: 'createIndex',
-            params: {
-              storeName: storeNameNew,
-              indexName: indexNameNew,
-              indexKeyPath: storeNew.indexes[indexNameNew]
-            }
-          })
+        for (const [indexName, indexKeyPath] of Object.entries(newStoreSchema.indexes)) {
+          databaseMigrations.push(
+            (t) => createIndex(t, { storeName, indexName, indexKeyPath })
+          )
         }
       }
     }
 
-    // Apply migrations immediately
+    // Apply migrations immediately if necessary
     if (databaseMigrations.length) {
       const dbUpgrade = await openDB(this.databaseName, databaseVersion + 1, {
         upgrade: (db, oldVersion, newVersion, transaction) => {
           for (const migration of databaseMigrations) {
-            DB_OPERATIONS[migration.type](transaction, migration.params)
+            migration(transaction)
           }
         }
       })
@@ -480,7 +419,7 @@ export default class Backinfront {
    * @param  {'readonly'|'readwrite'} mode
    * @param  {Array<string>} [storeNames=null]
    */
-  async getTransaction (mode, storeNames = null) {
+  async $openTransaction (mode, storeNames = null) {
     await this.#databaseReady()
     const db = await openDB(this.databaseName)
     const transaction = db.transaction(storeNames || db.objectStoreNames, mode, { durability: 'relaxed' })
@@ -496,10 +435,10 @@ export default class Backinfront {
    * @param  {string} storeName
    * @param  {IDBTransaction|'readonly'|'readwrite'} mode
    */
-  async openStore (storeName, mode) {
+  async $openStore (storeName, mode) {
     const transaction = mode instanceof IDBTransaction
       ? mode
-      : await this.getTransaction(mode, storeName)
+      : await this.$openTransaction(mode, storeName)
     const store = transaction.objectStore(storeName)
     return store
   }
@@ -512,26 +451,6 @@ export default class Backinfront {
     await deleteDB(this.databaseName)
     this.#databaseConfigurationStarted = false
     this.#databaseConfigurationEnded = false
-  }
-
-  /*****************************************************************
-  * Sync management
-  *****************************************************************/
-
-  /**
-   * Add a new item to the queue store owned by the lib
-   * @param {string} storeName
-   * @param {string} primaryKey
-   * @param {IDBTransaction} transaction
-   */
-  async addToSyncQueue ({ storeName, primaryKey }, transaction) {
-    const store = await this.openStore(this.#syncQueueStoreName, transaction)
-    await store.add({
-      id: crypto.randomUUID(),
-      createdAt: new Date().toJSON(),
-      storeName,
-      primaryKey
-    })
   }
 
   /*****************************************************************
@@ -593,7 +512,7 @@ export default class Backinfront {
         throw new Error('Response status is not ok')
       }
     } catch (error) {
-      throw new BackinfrontError(`fetch: ${error.message}`)
+      throw new CustomError(`fetch: ${error.message}`)
     }
 
     return fetchResponse.json()
@@ -602,6 +521,22 @@ export default class Backinfront {
   /*****************************************************************
   * Sync management
   *****************************************************************/
+
+  /**
+   * Add a new item to the queue store owned by the lib
+   * @param {string} storeName
+   * @param {string} primaryKey
+   * @param {IDBTransaction} transaction
+   */
+  async $addToSyncQueue ({ storeName, primaryKey }, transaction) {
+    const store = await this.$openStore(this.#syncQueueStoreName, transaction)
+    await store.add({
+      id: crypto.randomUUID(),
+      createdAt: new Date().toJSON(),
+      storeName,
+      primaryKey
+    })
+  }
 
   /**
    * Fill the database with initial data
@@ -624,7 +559,7 @@ export default class Backinfront {
         Object.entries(response).map(async ([storeName, rows]) => {
           // Here we use one transaction per store instead of a global one
           // because high number of inserts on the same transaction can be slow
-          const store = await this.openStore(storeName, 'readwrite')
+          const store = await this.$openStore(storeName, 'readwrite')
 
           return Promise.all(
             rows.map(element => store.put(element))
@@ -650,9 +585,9 @@ export default class Backinfront {
       this.#syncInProgress = true
 
       // Start a new transaction
-      let transaction = await this.getTransaction('readonly')
-      let metadataStore = await this.openStore(this.#metadataStoreName, transaction)
-      let syncQueueStore = await this.openStore(this.#syncQueueStoreName, transaction)
+      let transaction = await this.$openTransaction('readonly')
+      let metadataStore = await this.$openStore(this.#metadataStoreName, transaction)
+      let syncQueueStore = await this.$openStore(this.#syncQueueStoreName, transaction)
 
       // Init lastChangeAt
       let currentLastChangeAt = await metadataStore.get('lastChangeAt')
@@ -691,13 +626,13 @@ export default class Backinfront {
       })
 
       // Refresh the transaction (the previous one has been terminated because of fetch)
-      transaction = await this.getTransaction('readwrite')
-      metadataStore = await this.openStore(this.#metadataStoreName, transaction)
-      syncQueueStore = await this.openStore(this.#syncQueueStoreName, transaction)
+      transaction = await this.$openTransaction('readwrite')
+      metadataStore = await this.$openStore(this.#metadataStoreName, transaction)
+      syncQueueStore = await this.$openStore(this.#syncQueueStoreName, transaction)
 
       // Sync server data locally
       for (const { createdAt, storeName, data } of serverData) {
-        const store = await this.openStore(storeName, transaction)
+        const store = await this.$openStore(storeName, transaction)
         await store.put(data)
 
         if (!nextLastChangeAt || isAfterDate(parseDate(createdAt), nextLastChangeAt)) {

@@ -1,5 +1,5 @@
 import { isObject } from 'utililib'
-import BackinfrontError from './BackinfrontError.js'
+import CustomError from './CustomError.js'
 
 
 export default class QueryLanguage {
@@ -73,33 +73,20 @@ export default class QueryLanguage {
   }
 
   /**
-   * Add a custom where operator
-   * @param {string} operatorName - where clause
-   * @param {function} operatorAction - item to compare the condition with
-   */
-  static addOperator (operatorName, operatorAction) {
-    if (!operatorName.startsWith('$') || operatorName.length === 1) {
-      throw new BackinfrontError('operator\'s name must start with $')
-    }
-
-    this.#OPERATORS[operatorName] = operatorAction
-  }
-
-  /**
    * Check if the where condition is valid
    * @param {object} condition - where clause
    * @param {object} row - item to compare the condition with
    * @return {boolean}
    */
-  static isConditionValid (condition, row) {
+  static $isConditionValid (condition, row) {
     if (isObject(condition)) {
       return Object.entries(condition).every(([conditionName, conditionValue]) => {
         // Logic operators
         if (conditionName === '$or') {
-          return conditionValue.some(nestedCondition => this.isConditionValid(nestedCondition, row))
+          return conditionValue.some(nestedCondition => this.$isConditionValid(nestedCondition, row))
         }
         if (conditionName === '$and') {
-          return conditionValue.every(nestedCondition => this.isConditionValid(nestedCondition, row))
+          return conditionValue.every(nestedCondition => this.$isConditionValid(nestedCondition, row))
         }
 
         // Support dot notation for nested field
@@ -125,5 +112,18 @@ export default class QueryLanguage {
     }
 
     return true
+  }
+
+  /**
+   * Add a custom operator
+   * @param {string} operatorName
+   * @param {function} operatorAction
+   */
+  static addOperator (operatorName, operatorAction) {
+    if (!operatorName.startsWith('$') || operatorName.length === 1) {
+      throw new CustomError('operator\'s name must start with $')
+    }
+
+    this.#OPERATORS[operatorName] = operatorAction
   }
 }

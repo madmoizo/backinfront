@@ -59,7 +59,7 @@ export default class Router {
       source: options,
       target: this,
       exceptions: {
-        routes: (value) => this.addRoutes(value)
+        routes: (value) => this.#addRoutes(value)
       }
     })
   }
@@ -68,17 +68,17 @@ export default class Router {
    * Add a list of routes
    * @param {array<object>} routes
    */
-  addRoutes (routes) {
+  #addRoutes (routes) {
     for (const route of routes) {
       if (
         'storeName' in route &&
         'presets' in route
       ) {
         for (const preset of route.presets) {
-          this.addRoute(ROUTES_PRESETS[preset](route.storeName))
+          this.#addRoute(ROUTES_PRESETS[preset](route.storeName))
         }
       } else {
-        this.addRoute(route)
+        this.#addRoute(route)
       }
     }
   }
@@ -90,7 +90,7 @@ export default class Router {
    * @param {string} routeParams.pathname
    * @param {function} routeParams.handler
    */
-  addRoute ({ method, pathname, handler }) {
+  #addRoute ({ method, pathname, handler }) {
     const url = new URL(joinPaths(this.baseUrl, pathname, '/')) // /!\ force a trailing slash /!\
     // Extract path params from url
     const pathParams = (url.pathname.match(/:[^/]+/g) ?? []).map(tag => tag.replace(':', ''))
