@@ -247,7 +247,10 @@ export default class Backinfront {
     // Add the store to the hashtable
     this.stores[store.storeName] = store
     // Add the store to the database schema
-    this.#databaseSchema[store.storeName] = {}
+    this.#databaseSchema[store.storeName] = {
+      keyPath: null,
+      indexes: {} // must be defined to prevent Object.entries() error
+    }
     if (store.primaryKey) {
       this.#databaseSchema[store.storeName].keyPath = store.primaryKey
     }
