@@ -59,7 +59,7 @@ export default class Router {
       source: options,
       target: this,
       exceptions: {
-        routes: (value) => this.#addRoutes(value)
+        routes: ({ value }) => this.#addRoutes(value)
       }
     })
   }
