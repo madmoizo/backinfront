@@ -32,7 +32,8 @@ export default class Backinfront {
   #databaseConfigurationEnded = false
   #databaseSchema = {
     [this.#metadataStoreName]: {
-      keyPath: null
+      keyPath: null,
+      indexes: {} // must be defined to prevent Object.entries() error
     },
     [this.#syncQueueStoreName]: {
       keyPath: 'id',
@@ -248,14 +249,8 @@ export default class Backinfront {
     this.stores[store.storeName] = store
     // Add the store to the database schema
     this.#databaseSchema[store.storeName] = {
-      keyPath: null,
-      indexes: {} // must be defined to prevent Object.entries() error
-    }
-    if (store.primaryKey) {
-      this.#databaseSchema[store.storeName].keyPath = store.primaryKey
-    }
-    if (store.indexes) {
-      this.#databaseSchema[store.storeName].indexes = store.indexes
+      keyPath: store.primaryKey ?? null,
+      indexes: store.indexes ?? {} // must be defined to prevent Object.entries() error
     }
 
     return store
@@ -350,18 +345,14 @@ export default class Backinfront {
             }
           // Delete index
           } else {
-            databaseMigrations.push(
-              (t) => deleteIndex(t, storeName, indexName)
-            )
+            databaseMigrations.push((t) => deleteIndex(t, storeName, indexName))
           }
         }
 
         // Create indexes
         for (const [indexName, indexKeyPath] of Object.entries(newStoreSchema.indexes)) {
           if (!has(currentStoreSchema.indexes, indexName)) {
-            databaseMigrations.push(
-              (t) => createIndex(t, storeName, indexName, indexKeyPath)
-            )
+            databaseMigrations.push((t) => createIndex(t, storeName, indexName, indexKeyPath))
           }
         }
       // Delete store
@@ -375,14 +366,10 @@ export default class Backinfront {
     // Create stores
     for (const [storeName, newStoreSchema] of Object.entries(newDatabaseSchema)) {
       if (!has(currentDatabaseSchema, storeName)) {
-        databaseMigrations.push(
-          (t) => createStore(t, storeName, newStoreSchema.keyPath)
-        )
+        databaseMigrations.push((t) => createStore(t, storeName, newStoreSchema.keyPath))
 
         for (const [indexName, indexKeyPath] of Object.entries(newStoreSchema.indexes)) {
-          databaseMigrations.push(
-            (t) => createIndex(t, storeName, indexName, indexKeyPath)
-          )
+          databaseMigrations.push((t) => createIndex(t, storeName, indexName, indexKeyPath))
         }
       }
     }
