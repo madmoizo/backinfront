@@ -183,7 +183,7 @@ export default class Store {
 
   /**
    * Get an item with a primary key
-   * @param {string} primaryKeyValue
+   * @param {string|object} primaryKeyValue
    * @param {IDBTransaction} [transaction=null]
    * @return {object}
    */
@@ -205,10 +205,29 @@ export default class Store {
   /**
    * Clear the store
    * @param {IDBTransaction} [transaction=null]
+   * @returns {void}
    */
   async clear (transaction = null) {
     const store = await this.#backinfront._openStore(this.storeName, transaction ?? 'readwrite')
     await store.clear()
+  }
+
+  /**
+   * Delete multiple items
+   * @param {object} [condition=null] - list of filters (where, limit, offset, order)
+   * @param {IDBTransaction} [transaction=null]
+   * @returns {void}
+   */
+  async deleteMany (condition = null, transaction = null) {
+    transaction ??= await this.#backinfront._openTransaction(this.storeName)
+
+    if (condition) {
+      await Promise.all(
+        (await this.findMany(condition, transaction)).map(item => this.deleteOne(item[this.primaryKey], transaction))
+      )
+    } else {
+      await this.clear(transaction)
+    }
   }
 
   /**
