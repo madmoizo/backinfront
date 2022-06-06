@@ -70,7 +70,7 @@ export default class Backinfront {
    * @param {Array<object>} options.router - list of store's configurations
    * @param {string} options.populateUrl - part of url corresponding to the populate endpoint
    * @param {string} options.syncUrl - part of url corresponding to the sync endpoint
-   * @param {function|false} [options.authentication] - must return a JWT to authenticate populate & sync requests
+   * @param {function | false} [options.authentication] - must return a JWT to authenticate populate & sync requests
    * @param {function} [options.collectionCountKey]
    * @param {function} [options.collectionDataKey]
    * @param {function} [options.routeState] - must return an object with data available on every offline handled requests
@@ -409,7 +409,7 @@ export default class Backinfront {
   /**
    * Get a transaction
    * @param  {Array<string>} [storeNames=null]
-   * @param  {'readonly'|'readwrite'} [mode='readwrite']
+   * @param  {'readonly' | 'readwrite'} [mode='readwrite']
    */
   async _openTransaction (storeNames = null, mode = 'readwrite') {
     await this.#databaseReady()
@@ -425,7 +425,7 @@ export default class Backinfront {
   /**
    * Open a store
    * @param  {string} storeName
-   * @param  {IDBTransaction|'readonly'|'readwrite'} mode
+   * @param  {IDBTransaction | 'readonly' | 'readwrite'} mode
    */
   async _openStore (storeName, mode) {
     const transaction = mode instanceof IDBTransaction
