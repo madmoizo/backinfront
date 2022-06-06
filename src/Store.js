@@ -109,7 +109,7 @@ export default class Store {
    * @return {number}
    */
   async count (transaction = null) {
-    const store = await this.#backinfront.$openStore(this.storeName, transaction ?? 'readonly')
+    const store = await this.#backinfront._openStore(this.storeName, transaction ?? 'readonly')
     const count = await store.count()
     return count
   }
@@ -121,7 +121,7 @@ export default class Store {
    * @return {object}
    */
   async findManyAndCount (condition = null, transaction = null) {
-    const store = await this.#backinfront.$openStore(this.storeName, transaction ?? 'readonly')
+    const store = await this.#backinfront._openStore(this.storeName, transaction ?? 'readonly')
 
     let rows = []
     let count = 0
@@ -146,7 +146,7 @@ export default class Store {
 
       // Cursor iteration
       while (cursor) {
-        if (QueryLanguage.$isConditionValid(condition.where, cursor.value)) {
+        if (QueryLanguage._isConditionValid(condition.where, cursor.value)) {
           count += 1
 
           if (
@@ -197,7 +197,7 @@ export default class Store {
       return rows[0]
     }
 
-    const store = await this.#backinfront.$openStore(this.storeName, transaction ?? 'readonly')
+    const store = await this.#backinfront._openStore(this.storeName, transaction ?? 'readonly')
     const row = await store.get(primaryKeyValue)
     return row
   }
@@ -207,7 +207,7 @@ export default class Store {
    * @param {IDBTransaction} [transaction=null]
    */
   async clear (transaction = null) {
-    const store = await this.#backinfront.$openStore(this.storeName, transaction ?? 'readwrite')
+    const store = await this.#backinfront._openStore(this.storeName, transaction ?? 'readwrite')
     await store.clear()
   }
 
@@ -217,7 +217,7 @@ export default class Store {
    * @param {IDBTransaction} [transaction=null]
    */
   async delete (primaryKeyValue, transaction = null) {
-    const store = await this.#backinfront.$openStore(this.storeName, transaction ?? 'readwrite')
+    const store = await this.#backinfront._openStore(this.storeName, transaction ?? 'readwrite')
     await store.delete(primaryKeyValue)
   }
 
@@ -231,18 +231,18 @@ export default class Store {
     let autocommit = false
 
     if (transaction === null) {
-      transaction = await this.#backinfront.$openTransaction('readwrite')
+      transaction = await this.#backinfront._openTransaction('readwrite')
       autocommit = true
     }
 
-    const store = await this.#backinfront.$openStore(this.storeName, transaction)
+    const store = await this.#backinfront._openStore(this.storeName, transaction)
     // Insert the new item
     this.beforeCreate(data)
     const formattedData = this.#backinfront.formatDataBeforeSave(data)
     const savedPrimaryKeyValue = await store.add(formattedData)
     const refreshedData = await store.get(savedPrimaryKeyValue)
 
-    await this.#backinfront.$addToSyncQueue({
+    await this.#backinfront._addToSyncQueue({
       storeName: this.storeName,
       primaryKey: savedPrimaryKeyValue
     }, transaction)
@@ -266,11 +266,11 @@ export default class Store {
     let autocommit = false
 
     if (transaction === null) {
-      transaction = await this.#backinfront.$openTransaction('readwrite')
+      transaction = await this.#backinfront._openTransaction('readwrite')
       autocommit = true
     }
 
-    const store = await this.#backinfront.$openStore(this.storeName, transaction)
+    const store = await this.#backinfront._openStore(this.storeName, transaction)
     // Check the consistency
     if (!has(data, this.primaryKey)) {
       throw new CustomError('update: data param must include the primaryKey')
@@ -286,7 +286,7 @@ export default class Store {
     const savedPrimaryKeyValue = await store.put(formattedData)
     const refreshedData = await store.get(savedPrimaryKeyValue)
 
-    await this.#backinfront.$addToSyncQueue({
+    await this.#backinfront._addToSyncQueue({
       storeName: this.storeName,
       primaryKey: savedPrimaryKeyValue
     }, transaction)

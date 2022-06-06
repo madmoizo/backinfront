@@ -78,15 +78,15 @@ export default class QueryLanguage {
    * @param {object} row - item to compare the condition with
    * @return {boolean}
    */
-  static $isConditionValid (condition, row) {
+  static _isConditionValid (condition, row) {
     if (isObject(condition)) {
       return Object.entries(condition).every(([conditionName, conditionValue]) => {
         // Logic operators
         if (conditionName === '$or') {
-          return conditionValue.some(nestedCondition => this.$isConditionValid(nestedCondition, row))
+          return conditionValue.some(nestedCondition => this._isConditionValid(nestedCondition, row))
         }
         if (conditionName === '$and') {
-          return conditionValue.every(nestedCondition => this.$isConditionValid(nestedCondition, row))
+          return conditionValue.every(nestedCondition => this._isConditionValid(nestedCondition, row))
         }
 
         // Support dot notation for nested field
@@ -121,7 +121,7 @@ export default class QueryLanguage {
    */
   static addOperator (operatorName, operatorAction) {
     if (!operatorName.startsWith('$') || operatorName.length === 1) {
-      throw new CustomError('operator\'s name must start with $')
+      throw new CustomError('operator\'s name MUST starts with $')
     }
 
     this.#OPERATORS[operatorName] = operatorAction

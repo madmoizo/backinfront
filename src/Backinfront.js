@@ -193,7 +193,7 @@ export default class Backinfront {
     }
 
     // Provide a global transaction
-    ctx.transaction = await this.$openTransaction('readwrite')
+    ctx.transaction = await this._openTransaction('readwrite')
 
     // Try to execute the route action
     let routeHandlerResult
@@ -411,7 +411,7 @@ export default class Backinfront {
    * @param  {'readonly'|'readwrite'} mode
    * @param  {Array<string>} [storeNames=null]
    */
-  async $openTransaction (mode, storeNames = null) {
+  async _openTransaction (mode, storeNames = null) {
     await this.#databaseReady()
     const db = await openDB(this.databaseName)
     const transaction = db.transaction(storeNames || db.objectStoreNames, mode, { durability: 'relaxed' })
@@ -427,10 +427,10 @@ export default class Backinfront {
    * @param  {string} storeName
    * @param  {IDBTransaction|'readonly'|'readwrite'} mode
    */
-  async $openStore (storeName, mode) {
+  async _openStore (storeName, mode) {
     const transaction = mode instanceof IDBTransaction
       ? mode
-      : await this.$openTransaction(mode, storeName)
+      : await this._openTransaction(mode, storeName)
     const store = transaction.objectStore(storeName)
     return store
   }
@@ -520,8 +520,8 @@ export default class Backinfront {
    * @param {string} primaryKey
    * @param {IDBTransaction} transaction
    */
-  async $addToSyncQueue ({ storeName, primaryKey }, transaction) {
-    const store = await this.$openStore(this.#syncQueueStoreName, transaction)
+  async _addToSyncQueue ({ storeName, primaryKey }, transaction) {
+    const store = await this._openStore(this.#syncQueueStoreName, transaction)
     await store.add({
       id: crypto.randomUUID(),
       createdAt: new Date().toJSON(),
@@ -551,7 +551,7 @@ export default class Backinfront {
         Object.entries(response).map(async ([storeName, rows]) => {
           // Here we use one transaction per store instead of a global one
           // because high number of inserts on the same transaction can be slow
-          const store = await this.$openStore(storeName, 'readwrite')
+          const store = await this._openStore(storeName, 'readwrite')
 
           return Promise.all(
             rows.map(element => store.put(element))
@@ -577,9 +577,9 @@ export default class Backinfront {
       this.#syncInProgress = true
 
       // Start a new transaction
-      let transaction = await this.$openTransaction('readonly')
-      let metadataStore = await this.$openStore(this.#metadataStoreName, transaction)
-      let syncQueueStore = await this.$openStore(this.#syncQueueStoreName, transaction)
+      let transaction = await this._openTransaction('readonly')
+      let metadataStore = await this._openStore(this.#metadataStoreName, transaction)
+      let syncQueueStore = await this._openStore(this.#syncQueueStoreName, transaction)
 
       // Init lastChangeAt
       let currentLastChangeAt = await metadataStore.get('lastChangeAt')
@@ -618,13 +618,13 @@ export default class Backinfront {
       })
 
       // Refresh the transaction (the previous one has been terminated because of fetch)
-      transaction = await this.$openTransaction('readwrite')
-      metadataStore = await this.$openStore(this.#metadataStoreName, transaction)
-      syncQueueStore = await this.$openStore(this.#syncQueueStoreName, transaction)
+      transaction = await this._openTransaction('readwrite')
+      metadataStore = await this._openStore(this.#metadataStoreName, transaction)
+      syncQueueStore = await this._openStore(this.#syncQueueStoreName, transaction)
 
       // Sync server data locally
       for (const { createdAt, storeName, data } of serverData) {
-        const store = await this.$openStore(storeName, transaction)
+        const store = await this._openStore(storeName, transaction)
         await store.put(data)
 
         if (!nextLastChangeAt || isAfterDate(parseDate(createdAt), nextLastChangeAt)) {
