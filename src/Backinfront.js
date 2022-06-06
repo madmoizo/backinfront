@@ -193,7 +193,7 @@ export default class Backinfront {
     }
 
     // Provide a global transaction
-    ctx.transaction = await this._openTransaction('readwrite')
+    ctx.transaction = await this._openTransaction()
 
     // Try to execute the route action
     let routeHandlerResult
@@ -408,10 +408,10 @@ export default class Backinfront {
 
   /**
    * Get a transaction
-   * @param  {'readonly'|'readwrite'} mode
    * @param  {Array<string>} [storeNames=null]
+   * @param  {'readonly'|'readwrite'} [mode='readwrite']
    */
-  async _openTransaction (mode, storeNames = null) {
+  async _openTransaction (storeNames = null, mode = 'readwrite') {
     await this.#databaseReady()
     const db = await openDB(this.databaseName)
     const transaction = db.transaction(storeNames || db.objectStoreNames, mode, { durability: 'relaxed' })
@@ -430,7 +430,7 @@ export default class Backinfront {
   async _openStore (storeName, mode) {
     const transaction = mode instanceof IDBTransaction
       ? mode
-      : await this._openTransaction(mode, storeName)
+      : await this._openTransaction(storeName, mode)
     const store = transaction.objectStore(storeName)
     return store
   }
@@ -577,7 +577,7 @@ export default class Backinfront {
       this.#syncInProgress = true
 
       // Start a new transaction
-      let transaction = await this._openTransaction('readonly')
+      let transaction = await this._openTransaction([this.#metadataStoreName, this.#syncQueueStoreName], 'readonly')
       let metadataStore = await this._openStore(this.#metadataStoreName, transaction)
       let syncQueueStore = await this._openStore(this.#syncQueueStoreName, transaction)
 
@@ -618,7 +618,7 @@ export default class Backinfront {
       })
 
       // Refresh the transaction (the previous one has been terminated because of fetch)
-      transaction = await this._openTransaction('readwrite')
+      transaction = await this._openTransaction()
       metadataStore = await this._openStore(this.#metadataStoreName, transaction)
       syncQueueStore = await this._openStore(this.#syncQueueStoreName, transaction)
 

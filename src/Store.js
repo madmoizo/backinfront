@@ -231,7 +231,7 @@ export default class Store {
     let autocommit = false
 
     if (transaction === null) {
-      transaction = await this.#backinfront._openTransaction('readwrite')
+      transaction = await this.#backinfront._openTransaction()
       autocommit = true
     }
 
@@ -266,7 +266,7 @@ export default class Store {
     let autocommit = false
 
     if (transaction === null) {
-      transaction = await this.#backinfront._openTransaction('readwrite')
+      transaction = await this.#backinfront._openTransaction()
       autocommit = true
     }
 
