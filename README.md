@@ -174,8 +174,8 @@ interface BackinfrontAPI {
         data
       }, ...
     ]
-    Note: 
-    The recommended way to use the sync capability is to send a message periodically 
+    Note:
+    The recommended way to use the sync capability is to send a message periodically
     from the window context which will trigger this function
   */
   sync(): Promise<void>,
@@ -260,19 +260,21 @@ interface FindQuery {
 interface StoreAPI {
   // Delete all elements from the store
   clear(transaction?: IDBTransaction): Promise<void>,
-  // Delete the element matching the primaryKey value from the store
-  delete(primaryKeyValue: any, transaction?: IDBTransaction): Promise<void>,
-  // Add a new item to the store
-  create(data: object, transaction?: IDBTransaction): Promise<object>,
-  // Update an existing item from the store
-  update(primaryKeyValue: any, data: object, transaction?: IDBTransaction): Promise<object>,
   // Count the total of items in the store
   count(transaction?: IDBTransaction): Promise<number>,
-  // Find an item by it's primaryKey value
-  findOne(primaryKeyValue, transaction?: IDBTransaction): Promise<object>,
+  // Add a new item to the store
+  create(data: object, transaction?: IDBTransaction): Promise<object>,
+  // Delete the elements matching the condition
+  deleteMany(condition?: FindQuery, transaction?: IDBTransaction): Promise<void>,
+  // Delete the element matching the primaryKey value from the store
+  deleteOne(primaryKeyValue: unknown, transaction?: IDBTransaction): Promise<void>,
   // Find a list of items matching the provided condition
+  findMany(condition?: FindQuery, transaction?: IDBTransaction): Promise<Array<object>>,
   findManyAndCount(condition?: FindQuery, transaction?: IDBTransaction): Promise<object>,
-  findMany(condition?: FindQuery, transaction?: IDBTransaction): Promise<Array<object>>
+  // Find an item by it's primaryKey value
+  findOne(primaryKeyValue: unknown | FindQuery, transaction?: IDBTransaction): Promise<object>,
+  // Update an existing item from the store
+  update(primaryKeyValue: unknown, data: object, transaction?: IDBTransaction): Promise<object>,
 }
 ```
 
@@ -346,7 +348,7 @@ await store.findManyAndCount({
   limit: number,
   offset: number,
   // You can only order by an existing index
-  order: ['indexName', 'DESC'] 
+  order: ['indexName', 'DESC']
 })
 ```
 
