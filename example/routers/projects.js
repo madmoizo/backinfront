@@ -16,16 +16,20 @@ export default {
         if (search) {
           const number = []
           const orderGiverName = []
-          const words = search.split(' ') // in a real world, you should normalized the search (unaccent, lowercase)
+          const words = search.split(' ')
+
+          const normalize = (value) => {
+            value.toLowerCase()
+          }
 
           for (const word of words) {
             number.push({
-              number: { $like: word }
+              number: { $like: [normalize, word] }
             })
             orderGiverName.push({
               $or: [
-                { 'author.firstName': { $like: word } },
-                { 'author.lastName': { $like: word } }
+                { 'author.firstName': { $like: [normalize, word] } },
+                { 'author.lastName': { $like: [normalize, word] } }
               ]
             })
           }
@@ -39,9 +43,9 @@ export default {
         }
 
         return Clientfile.findManyAndCount({
-          where: where,
-          offset: offset,
-          limit: limit,
+          where,
+          offset,
+          limit,
           order: ['createdAt', 'DESC']
         })
       }
@@ -86,7 +90,10 @@ export default {
         const project = await Project.findOne(pathParams.projectId, transaction)
 
         if (!['ACCEPTED'].includes(project.status)) {
-          throw new Error(`Project already accepted`)
+          return Response(undefined, {
+            status: 304,
+            statusText: 'Project already accepted'
+          })
         }
 
         projectData.acceptedAt = new Date()

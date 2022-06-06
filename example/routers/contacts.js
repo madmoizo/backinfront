@@ -1,6 +1,5 @@
 export default {
   baseUrl: 'https://api.example.com/contacts',
-  storeName: 'Contact',
   routes: [
     {
       storeName: 'Contact',
@@ -20,20 +19,24 @@ export default {
           const name = []
           const company = []
           const phone = []
-          const words = search.split(' ') // in a real world, you should normalized the search (unaccent, lowercase)
+          const words = search.split(' ')
+
+          const normalize = (value) => {
+            value.toLowerCase()
+          }
 
           for (const word of words) {
             name.push({
               $or: [
-                { firstName: { $like: word } },
-                { lastName: { $like: word } }
+                { firstName: { $like: [normalize, word] } },
+                { lastName: { $like: [normalize, word] } }
               ]
             })
             company.push({
-              company: { $like: word }
+              company: { $like: [normalize, word] }
             })
             phone.push({
-              phone: { $like: word }
+              phone: { $like: [normalize, word] }
             })
           }
 
@@ -48,10 +51,10 @@ export default {
         }
 
         return Contact.findManyAndCount({
-          where: where,
-          offset: offset,
-          limit: limit,
-          order: order
+          where,
+          offset,
+          limit,
+          order
         })
       }
     }
