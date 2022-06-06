@@ -235,7 +235,7 @@ export default class Store {
    * @param {string} primaryKeyValue
    * @param {IDBTransaction} [transaction=null]
    */
-  async delete (primaryKeyValue, transaction = null) {
+  async deleteOne (primaryKeyValue, transaction = null) {
     const store = await this.#backinfront._openStore(this.storeName, transaction ?? 'readwrite')
     await store.delete(primaryKeyValue)
   }
