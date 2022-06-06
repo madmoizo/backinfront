@@ -183,7 +183,7 @@ export default class Store {
 
   /**
    * Get an item with a primary key
-   * @param {string|object} primaryKeyValue
+   * @param {string | object} primaryKeyValue
    * @param {IDBTransaction} [transaction=null]
    * @return {object}
    */
