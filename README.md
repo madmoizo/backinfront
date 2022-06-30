@@ -91,13 +91,13 @@ interface BackinfrontOptions {
   // URL used for database synchronization
   syncUrl: string,
   // Provides a JWT to authenticate requests on the server
-  authentication?: false,
-  authentication?(): Promise<string>,
+  // Example: add authorization header to authenticate the request
+  headers?(): Promise<Object>,
   // Key to use when the result contains count & data
   collectionCountKey?: string,
   collectionDataKey?: string,
-  // Add data to context of offline handled routes
-  routeState?(request: Request): object,
+  // Add data available in routes handlers
+  getSession?(request: Request): object,
   // Formats data just before the insertion
   formatDataBeforeSave?(data: object): object,
   // Format a search param of a request handled offline
@@ -204,8 +204,8 @@ const routes = backinfront.routes
 interface RouteHandlerContext {
   request: Request,
   transaction: IDBTransaction,
-  // Date returned by `routeState` function
-  state: { [globalData: string]: any },
+  // Date returned by `getSession` function
+  session: { [globalData: string]: any },
   // Search param after being formatted by `formatRouteSearchParam`
   searchParams: { [searchParams: string]: string | any },
   // Path param after being formatted by `formatRoutePathParam`

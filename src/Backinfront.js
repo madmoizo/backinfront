@@ -43,15 +43,15 @@ export default class Backinfront {
     }
   }
 
+  collectionCountKey = 'count'
+  collectionDataKey = 'rows'
   databaseName = ''
   stores = {}
   routes = {}
   populateUrl = ''
   syncUrl = ''
-  authentication = false
-  collectionCountKey = 'count'
-  collectionDataKey = 'rows'
-  routeState = () => null
+  headers = () => {}
+  getSession = () => null
   formatRouteSearchParam = (value) => value
   formatRoutePathParam = (value) => value
   onRouteError = () => null
@@ -70,10 +70,10 @@ export default class Backinfront {
    * @param {Array<object>} options.router - list of store's configurations
    * @param {string} options.populateUrl - part of url corresponding to the populate endpoint
    * @param {string} options.syncUrl - part of url corresponding to the sync endpoint
-   * @param {function | false} [options.authentication] - must return a JWT to authenticate populate & sync requests
+   * @param {function} [options.headers]
    * @param {function} [options.collectionCountKey]
    * @param {function} [options.collectionDataKey]
-   * @param {function} [options.routeState] - must return an object with data available on every offline handled requests
+   * @param {function} [options.getSession] - must return an object with data available on every offline handled requests
    * @param {function} [options.formatDataBeforeSave] - format data before insertion into indexeddb
    * @param {function} [options.formatRouteSearchParam] - format Request's search params (example: transform comma separated string into array)
    * @param {function} [options.formatRoutePathParam] - format Route's customs params
@@ -90,15 +90,15 @@ export default class Backinfront {
       options: {
         value: options,
         type: ['object', {
+          collectionCountKey: { type: 'string' },
+          collectionDataKey: { type: 'string' },
           databaseName: { type: 'string', required: true },
           stores: { type: 'array', required: true },
           routers: { type: 'array', required: true },
           syncUrl: { type: 'string', required: true },
           populateUrl: { type: 'string', required: true },
-          authentication: { type: ['function', 'false'] },
-          collectionCountKey: { type: 'string' },
-          collectionDataKey: { type: 'string' },
-          routeState: { type: 'function' },
+          headers: { type: 'function' },
+          getSession: { type: 'function' },
           formatDataBeforeSave: { type: 'function' },
           formatRouteSearchParam: { type: 'function' },
           formatRoutePathParam: { type: 'function' },
@@ -160,7 +160,7 @@ export default class Backinfront {
   async #getRouteResponse (route, request) {
     const ctx = {
       request,
-      state: {},
+      session: {},
       searchParams: {},
       pathParams: {},
       body: null,
@@ -185,8 +185,8 @@ export default class Backinfront {
       }
     }
 
-    // Merge state with user data
-    ctx.state = { ...ctx.state, ...this.routeState(request) }
+    // Merge session with user data
+    ctx.session = { ...ctx.session, ...this.getSession(request) }
 
     if (['POST', 'PUT', 'PATCH'].includes(request.method)) {
       ctx.body = await (request.clone()).json()
@@ -450,39 +450,6 @@ export default class Backinfront {
   *****************************************************************/
 
   /**
-   * Fetch helper to build the request init param
-   * @param {object} body
-   * @param {object} options
-   * @param {object} options.method
-   * @param {object} [options.body]
-   */
-  async #buildRequestInit ({ method, body }) {
-    const requestInit = {
-      method,
-      mode: 'cors',
-      headers: {
-        'Content-Type': 'application/json'
-      }
-    }
-
-    // Set Authorization header
-    if (this.authentication) {
-      const token = await this.authentication()
-
-      if (token) {
-        requestInit.headers['Authorization'] = `Bearer ${token}`
-      }
-    }
-
-    // Set body
-    if (body && ['POST', 'PUT', 'PATCH'].includes(requestInit.method)) {
-      requestInit.body = JSON.stringify(body)
-    }
-
-    return requestInit
-  }
-
-  /**
    * Fetch online data
    * @param {object} options
    * @param {string} options.method
@@ -492,8 +459,25 @@ export default class Backinfront {
    * @return {object}
    */
   async #fetch ({ method, url, searchParams, body }) {
+    // Get user defined headers
+    const headers = await this.headers()
+
+    // Build request init
+    const requestInit = {
+      method,
+      mode: 'cors',
+      headers: {
+        ...headers,
+        'content-type': 'application/json'
+      }
+    }
+
+    // Set body
+    if (body && ['POST', 'PUT', 'PATCH'].includes(method)) {
+      requestInit.body = JSON.stringify(body)
+    }
+
     const requestUrl = `${url}${stringifySearchParams(searchParams)}`
-    const requestInit = await this.#buildRequestInit({ method, body })
     const fetchRequest = new Request(requestUrl, requestInit)
     let fetchResponse
 

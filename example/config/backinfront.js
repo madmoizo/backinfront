@@ -22,16 +22,19 @@ const backinfront = new Backinfront({
   ],
   populateUrl: 'https://api.example.com/offline/populate',
   syncUrl: 'https://api.example.com/offline/sync',
-  authentication: () => {
-    return // retrieve your user's JWT from indexedDB
+  headers: () => {
+    const token = localStorage.get('token')
+    return {
+      authorization: `Bearer ${token}`
+    }
   },
   // For example, you can provide the JWT from the
-  // handled request in the global state
-  routeState: (request) => {
-    const state = {}
+  // handled request in the global session
+  getSession: (request) => {
+    const session = {}
     const authorizationHeader = request.headers.get('Authorization')
-    state.encodedToken = authorizationHeader.split(' ')[1]
-    return state
+    session.encodedToken = authorizationHeader.split(' ')[1]
+    return session
   },
   // If you use undashed uuid as a path param, you can redash it here
   formatRoutePathParam: (value) => {

@@ -1,3 +1,10 @@
+# 5.0.0
+
+- breaking(Backinfront): Remove `authentication`. Use the new `headers` method instead.
+- breaking(Backinfront): Rename `routeState` to `getSession`
+- breaking(Route): Rename `state` property to `session`
+- feat(Backinfront): add `headers` method
+
 # 4.0.0
 
 - breaking(Store): Rename `delete` to `deleteOne`
