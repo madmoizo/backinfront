@@ -31,6 +31,6 @@
   },
   "dependencies": {
     "idb": "^7.0.1",
-    "utililib": "^1.10.0"
+    "utililib": "^2.0.0"
   }
 }
