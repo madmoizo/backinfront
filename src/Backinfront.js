@@ -66,17 +66,17 @@ export default class Backinfront {
    * @constructor
    * @param {object} options
    * @param {string} options.databaseName
-   * @param {Array<object>} options.stores - list of store's configurations
-   * @param {Array<object>} options.router - list of store's configurations
-   * @param {string} options.populateUrl - part of url corresponding to the populate endpoint
-   * @param {string} options.syncUrl - part of url corresponding to the sync endpoint
+   * @param {Array<object>} options.stores list of store's configurations
+   * @param {Array<object>} options.router list of store's configurations
+   * @param {string} options.populateUrl part of url corresponding to the populate endpoint
+   * @param {string} options.syncUrl part of url corresponding to the sync endpoint
    * @param {function} [options.headers]
    * @param {function} [options.collectionCountKey]
    * @param {function} [options.collectionDataKey]
-   * @param {function} [options.getSession] - must return an object with data available on every offline handled requests
-   * @param {function} [options.formatDataBeforeSave] - format data before insertion into indexeddb
-   * @param {function} [options.formatRouteSearchParam] - format Request's search params (example: transform comma separated string into array)
-   * @param {function} [options.formatRoutePathParam] - format Route's customs params
+   * @param {function} [options.getSession] must return an object with data available on every offline handled requests
+   * @param {function} [options.formatDataBeforeSave] format data before insertion into indexeddb
+   * @param {function} [options.formatRouteSearchParam] format Request's search params (example: transform comma separated string into array)
+   * @param {function} [options.formatRoutePathParam] format Route's customs params
    * @param {function} [options.onRouteSuccess]
    * @param {function} [options.onRouteError]
    * @param {function} [options.onPopulateSuccess]
@@ -155,7 +155,7 @@ export default class Backinfront {
    * Route handler inside service worker fetch
    * @param {object} route
    * @param {Request} request
-   * @return {Response}
+   * @return {Promise<Response>}
    */
   async #getRouteResponse (route, request) {
     const ctx = {
@@ -408,7 +408,7 @@ export default class Backinfront {
 
   /**
    * Get a transaction
-   * @param  {Array<string>} [storeNames=null]
+   * @param  {Array<string> | null} [storeNames=null]
    * @param  {'readonly' | 'readwrite'} [mode='readwrite']
    */
   async _openTransaction (storeNames = null, mode = 'readwrite') {
@@ -500,8 +500,9 @@ export default class Backinfront {
 
   /**
    * Add a new item to the queue store owned by the lib
-   * @param {string} storeName
-   * @param {string} primaryKey
+   * @param {object} options
+   * @param {string} options.storeName
+   * @param {string} options.primaryKey
    * @param {IDBTransaction} transaction
    */
   async _addToSyncQueue ({ storeName, primaryKey }, transaction) {
