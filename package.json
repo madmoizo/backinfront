@@ -22,15 +22,15 @@
     "postversion": "git push && git push --follow-tags"
   },
   "devDependencies": {
-    "eslint": "^8.16.0",
+    "eslint": "^8.39.0",
     "eslint-config-standard": "^17.0.0",
-    "eslint-plugin-import": "^2.25.4",
+    "eslint-plugin-import": "^2.27.5",
     "eslint-plugin-node": "^11.1.0",
-    "eslint-plugin-promise": "^6.0.0",
+    "eslint-plugin-promise": "^6.1.1",
     "typescript": "^5.0.4"
   },
   "dependencies": {
-    "idb": "^7.0.1",
-    "utililib": "^2.0.0"
+    "bibliotech": "^1.1.0",
+    "idb": "^7.1.1"
   }
 }

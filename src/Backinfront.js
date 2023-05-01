@@ -9,7 +9,7 @@ import {
   stringifySearchParams,
   typecheck,
   waitUntil
-} from 'utililib'
+} from 'bibliotech'
 import {
   openDB,
   deleteDB,
