@@ -27,6 +27,6 @@
   },
   "dependencies": {
     "bibliotech": "^1.2.1",
-    "idb": "^7.1.1"
+    "idb": "^8.0.0"
   }
 }
